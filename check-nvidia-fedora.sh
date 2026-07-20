@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # check-nvidia-fedora.sh
-# Diagnóstico integral de NVIDIA en Fedora (especialmente portátiles híbridos Intel/AMD + NVIDIA)
+# Diagnóstico integral de NVIDIA en Fedora (probado en portátiles híbridos Intel + NVIDIA)
+# La detección de AMD + NVIDIA existe, pero esa configuración aún no ha sido validada.
 # No modifica el sistema. Algunas comprobaciones usan sudo cuando está disponible.
 # Desarrollado por Víctor Díaz González
 # Proyecto independiente: no contiene ni redistribuye software o drivers de NVIDIA.

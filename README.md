@@ -29,7 +29,10 @@
 <a id="espanol"></a>
 ## 🇨🇱 Español
 
-Script interactivo para comprobar la instalación y el funcionamiento del driver NVIDIA en Fedora, con atención especial a portátiles con gráficos híbridos Intel/AMD + NVIDIA y salidas HDMI/DisplayPort.
+Script interactivo para comprobar la instalación y el funcionamiento del driver NVIDIA en Fedora, incluidas las salidas HDMI/DisplayPort. Ha sido desarrollado y probado en un portátil con gráficos híbridos **Intel + NVIDIA**.
+
+> [!NOTE]
+> El script puede detectar configuraciones **AMD + NVIDIA**, pero ese tipo de equipo aún no ha sido probado ni validado. No se garantiza que todas las comprobaciones o acciones de reparación se comporten igual que en Intel + NVIDIA.
 
 Desarrollado por **Víctor Díaz González**.
 
@@ -87,6 +90,8 @@ El script verifica, entre otros elementos:
 ### 📦 Requisitos
 
 - Fedora; desarrollado y probado principalmente con Fedora 44.
+- Configuración validada: portátil con GPU integrada Intel y GPU dedicada NVIDIA.
+- AMD + NVIDIA: detección disponible, pero sin validación práctica por el momento.
 - Bash, RPM, DNF, systemd y las herramientas habituales del sistema.
 - Hardware NVIDIA para las comprobaciones específicas del driver.
 - `sudo` para instalar paquetes, reconstruir módulos o leer determinados parámetros protegidos.
@@ -221,7 +226,10 @@ La puntuación final es orientativa. La evidencia concreta de cada sección es m
 
 ### NVIDIA Diagnostics for Fedora
 
-Interactive script for checking NVIDIA driver installation and operation on Fedora, with special attention to Intel/AMD + NVIDIA hybrid laptops and HDMI/DisplayPort outputs.
+Interactive script for checking NVIDIA driver installation and operation on Fedora, including HDMI/DisplayPort outputs. It was developed and tested on a laptop with **Intel + NVIDIA** hybrid graphics.
+
+> [!NOTE]
+> The script can detect **AMD + NVIDIA** configurations, but that type of system has not yet been tested or validated. Not every check or repair action is guaranteed to behave exactly as it does on Intel + NVIDIA systems.
 
 Developed by **Víctor Díaz González**.
 
@@ -279,6 +287,8 @@ The script checks, among other components:
 ### 📦 Requirements
 
 - Fedora; primarily developed and tested on Fedora 44.
+- Validated configuration: laptop with an integrated Intel GPU and a dedicated NVIDIA GPU.
+- AMD + NVIDIA: detection is available, but practical validation has not yet been performed.
 - Bash, RPM, DNF, systemd, and standard system utilities.
 - NVIDIA hardware for driver-specific checks.
 - `sudo` for package installation, module rebuilding, and protected parameters.
