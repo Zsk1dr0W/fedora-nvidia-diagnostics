@@ -12,11 +12,22 @@
 
 <p align="center"><strong>Fedora + NVIDIA</strong></p>
 
-**Versión actual: 1.3.5**
+<p align="center">
+  <img src="https://img.shields.io/badge/versión-1.3.5-51A2DA?style=for-the-badge" alt="Versión 1.3.5">
+  <img src="https://img.shields.io/badge/Fedora-44-51A2DA?style=for-the-badge&logo=fedora&logoColor=white" alt="Fedora 44">
+  <img src="https://img.shields.io/badge/NVIDIA-compatible-76B900?style=for-the-badge&logo=nvidia&logoColor=white" alt="NVIDIA compatible">
+  <img src="https://img.shields.io/badge/Bash-script-4EAA25?style=for-the-badge&logo=gnubash&logoColor=white" alt="Bash">
+</p>
 
-[Español](#español) · [English](#english)
+<p align="center">
+  <a href="#espanol">🇨🇱 Español</a> ·
+  <a href="#english">🇬🇧 English</a>
+</p>
 
-## Español
+---
+
+<a id="espanol"></a>
+## 🇨🇱 Español
 
 Script interactivo para comprobar la instalación y el funcionamiento del driver NVIDIA en Fedora, con atención especial a portátiles con gráficos híbridos Intel/AMD + NVIDIA y salidas HDMI/DisplayPort.
 
@@ -24,7 +35,33 @@ Desarrollado por **Víctor Díaz González**.
 
 Fedora y el logotipo de Fedora son marcas del Fedora Project. NVIDIA y el logotipo de NVIDIA son marcas de NVIDIA Corporation. Este proyecto comunitario no está afiliado ni respaldado oficialmente por dichas organizaciones.
 
-## Funciones principales
+> [!TIP]
+> Ejecuta `./check-nvidia-fedora.sh`, elige una opción y deja que el asistente haga el resto.
+
+### ✨ Vista rápida
+
+| Área | Comprobaciones |
+|---|---|
+| 🧩 Driver | Módulos, versiones, AKMOD/KMOD y `nvidia-smi` |
+| 🖥️ Pantallas | HDMI, DisplayPort, DRM, KMS y framebuffer |
+| 🚀 Aceleración | OpenGL, EGL, Vulkan, OpenCL y PRIME |
+| 🔊 Multimedia | Audio HDMI, PipeWire, NVENC, NVDEC, VA-API y VDPAU |
+| 🔐 Seguridad | Secure Boot, firma del módulo y conflictos con Nouveau |
+| 🛠️ Reparación | Paquetes faltantes, AKMODS y reconstrucción del initramfs |
+
+### 📋 Contenido
+
+- [Funciones principales](#es-funciones)
+- [Requisitos](#es-requisitos)
+- [Uso rápido](#es-uso)
+- [Opciones](#es-opciones)
+- [Reparación de HDMI](#es-reparacion)
+- [Paquetes EGL/GBM](#es-paquetes)
+- [Interpretación](#es-resultados)
+- [Seguridad](#es-seguridad)
+
+<a id="es-funciones"></a>
+### 🔍 Funciones principales
 
 El script verifica, entre otros elementos:
 
@@ -43,7 +80,8 @@ El script verifica, entre otros elementos:
 - Bibliotecas NVIDIA, incluido `libnvidia-egl-gbm.so.1`.
 - Paquetes de diagnóstico ausentes y actualizaciones en la caché local.
 
-## Requisitos
+<a id="es-requisitos"></a>
+### 📦 Requisitos
 
 - Fedora; desarrollado y probado principalmente con Fedora 44.
 - Bash, RPM, DNF, systemd y las herramientas habituales del sistema.
@@ -52,7 +90,8 @@ El script verifica, entre otros elementos:
 
 El diagnóstico básico es de solo lectura. Las operaciones que modifican el sistema se ejecutan únicamente al elegirlas en el menú o mediante sus opciones explícitas.
 
-## Uso rápido
+<a id="es-uso"></a>
+### 🚀 Uso rápido
 
 Otorga permiso de ejecución si fuera necesario:
 
@@ -66,16 +105,19 @@ Abre el menú interactivo:
 ./check-nvidia-fedora.sh
 ```
 
-El menú permite:
+#### Menú interactivo
 
-1. Ejecutar el diagnóstico completo en modo de solo lectura.
-2. Instalar paquetes de soporte y diagnóstico ausentes.
-3. Reparar el módulo NVIDIA y reconstruir el initramfs.
-4. Instalar paquetes faltantes y realizar la reparación.
-5. Mostrar la ayuda.
-0. Salir.
+| Opción | Acción | ¿Modifica el sistema? |
+|:---:|---|:---:|
+| `1` | Diagnóstico completo | No |
+| `2` | Instalar paquetes faltantes | Sí |
+| `3` | Reparar módulo NVIDIA e initramfs | Sí |
+| `4` | Instalar faltantes y reparar | Sí |
+| `5` | Mostrar ayuda | No |
+| `0` | Salir | No |
 
-## Opciones de línea de comandos
+<a id="es-opciones"></a>
+### ⌨️ Opciones de línea de comandos
 
 ```text
 --menu             Abre el menú interactivo.
@@ -97,7 +139,11 @@ Ejemplos:
 
 El script solicita `sudo` cuando una operación lo necesita. No es necesario iniciar todo el menú como `root`.
 
-## Reparación del driver e HDMI
+<a id="es-reparacion"></a>
+### 🔧 Reparación del driver e HDMI
+
+> [!IMPORTANT]
+> Guarda tu trabajo antes de reparar. El script no reinicia el equipo automáticamente.
 
 La opción `--repair-driver` automatiza la solución que suele ser necesaria cuando el módulo está instalado, pero NVIDIA DRM no registra las salidas externas:
 
@@ -120,7 +166,8 @@ Un HDMI NVIDIA operativo debería aparecer como `connected` en un conector simil
 
 La numeración de la tarjeta y el conector puede cambiar entre equipos o arranques.
 
-## Paquetes NVIDIA y EGL/GBM
+<a id="es-paquetes"></a>
+### 🧱 Paquetes NVIDIA y EGL/GBM
 
 Una instalación habitual del driver desde RPM Fusion puede incluir:
 
@@ -139,16 +186,20 @@ rpm -qf /usr/lib64/libnvidia-egl-gbm.so.1
 
 No se recomienda mezclar paquetes de Fedora estable con Rawhide para resolver una biblioteca ausente.
 
-## Interpretación del resultado
+<a id="es-resultados"></a>
+### 🚦 Interpretación del resultado
 
-- `[OK]`: comprobación satisfactoria.
-- `[WARN]`: elemento opcional, información incompleta o condición que merece revisión.
-- `[FAIL]`: fallo que puede impedir el funcionamiento del driver o de una característica esencial.
-- `[INFO]`: dato informativo que no reduce la evaluación.
+| Estado | Significado |
+|:---:|---|
+| ✅ `[OK]` | Comprobación satisfactoria |
+| ⚠️ `[WARN]` | Elemento opcional o condición que merece revisión |
+| ❌ `[FAIL]` | Fallo que puede impedir una característica esencial |
+| ℹ️ `[INFO]` | Información que no reduce la evaluación |
 
 La puntuación final es orientativa. La evidencia concreta de cada sección es más importante que la cifra total.
 
-## Seguridad y alcance
+<a id="es-seguridad"></a>
+### 🛡️ Seguridad y alcance
 
 - El diagnóstico no elimina paquetes ni modifica la configuración.
 - La instalación usa DNF y muestra la transacción antes de confirmarla.
@@ -156,16 +207,17 @@ La puntuación final es orientativa. La evidencia concreta de cada sección es m
 - El script no instala CUDA Toolkit automáticamente.
 - Antes de reparar, conviene guardar el trabajo y cerrar aplicaciones importantes.
 
-## Archivos
+### 📁 Archivos
 
 - `check-nvidia-fedora.sh`: versión completa e interactiva recomendada.
 - `check-nvidia.sh`: diagnóstico básico anterior, conservado como referencia.
 
 ---
 
-## English
+<a id="english"></a>
+## 🇬🇧 English
 
-# NVIDIA Diagnostics for Fedora
+### NVIDIA Diagnostics for Fedora
 
 Interactive script for checking NVIDIA driver installation and operation on Fedora, with special attention to Intel/AMD + NVIDIA hybrid laptops and HDMI/DisplayPort outputs.
 
@@ -173,7 +225,33 @@ Developed by **Víctor Díaz González**.
 
 Fedora and the Fedora logo are trademarks of the Fedora Project. NVIDIA and the NVIDIA logo are trademarks of NVIDIA Corporation. This community project is not officially affiliated with or endorsed by either organization.
 
-## Main features
+> [!TIP]
+> Run `./check-nvidia-fedora.sh`, select an option, and let the assistant handle the rest.
+
+### ✨ At a glance
+
+| Area | Checks |
+|---|---|
+| 🧩 Driver | Modules, versions, AKMOD/KMOD, and `nvidia-smi` |
+| 🖥️ Displays | HDMI, DisplayPort, DRM, KMS, and framebuffer |
+| 🚀 Acceleration | OpenGL, EGL, Vulkan, OpenCL, and PRIME |
+| 🔊 Multimedia | HDMI audio, PipeWire, NVENC, NVDEC, VA-API, and VDPAU |
+| 🔐 Security | Secure Boot, module signature, and Nouveau conflicts |
+| 🛠️ Repair | Missing packages, AKMODS, and initramfs rebuilding |
+
+### 📋 Contents
+
+- [Main features](#en-features)
+- [Requirements](#en-requirements)
+- [Quick start](#en-quick-start)
+- [Options](#en-options)
+- [HDMI repair](#en-repair)
+- [EGL/GBM packages](#en-packages)
+- [Understanding results](#en-results)
+- [Safety](#en-safety)
+
+<a id="en-features"></a>
+### 🔍 Main features
 
 The script checks, among other components:
 
@@ -192,7 +270,8 @@ The script checks, among other components:
 - NVIDIA libraries, including `libnvidia-egl-gbm.so.1`.
 - Missing diagnostic packages and cached updates.
 
-## Requirements
+<a id="en-requirements"></a>
+### 📦 Requirements
 
 - Fedora; primarily developed and tested on Fedora 44.
 - Bash, RPM, DNF, systemd, and standard system utilities.
@@ -201,7 +280,8 @@ The script checks, among other components:
 
 The basic diagnostic mode is read-only. System-changing operations only run when explicitly selected from the menu or requested through a command-line option.
 
-## Quick start
+<a id="en-quick-start"></a>
+### 🚀 Quick start
 
 Make the script executable if necessary:
 
@@ -215,16 +295,19 @@ Open the interactive menu:
 ./check-nvidia-fedora.sh
 ```
 
-The menu provides these actions:
+#### Interactive menu
 
-1. Run the complete read-only diagnostic.
-2. Install missing support and diagnostic packages.
-3. Repair the NVIDIA module and rebuild the initramfs.
-4. Install missing packages and perform the repair.
-5. Display help.
-0. Exit.
+| Option | Action | Changes the system? |
+|:---:|---|:---:|
+| `1` | Complete diagnostic | No |
+| `2` | Install missing packages | Yes |
+| `3` | Repair NVIDIA module and initramfs | Yes |
+| `4` | Install missing packages and repair | Yes |
+| `5` | Display help | No |
+| `0` | Exit | No |
 
-## Command-line options
+<a id="en-options"></a>
+### ⌨️ Command-line options
 
 ```text
 --menu             Open the interactive menu.
@@ -246,7 +329,11 @@ Examples:
 
 The script requests `sudo` only when required. The complete menu does not need to be started as `root`.
 
-## Driver and HDMI repair
+<a id="en-repair"></a>
+### 🔧 Driver and HDMI repair
+
+> [!IMPORTANT]
+> Save your work before running a repair. The script never reboots automatically.
 
 The `--repair-driver` option automates the usual recovery procedure when the module is installed but NVIDIA DRM does not register external outputs:
 
@@ -269,7 +356,8 @@ An operational NVIDIA HDMI output should report `connected` in a connector simil
 
 Card and connector numbering can differ between computers and boots.
 
-## NVIDIA and EGL/GBM packages
+<a id="en-packages"></a>
+### 🧱 NVIDIA and EGL/GBM packages
 
 A typical RPM Fusion driver installation may include:
 
@@ -288,16 +376,20 @@ rpm -qf /usr/lib64/libnvidia-egl-gbm.so.1
 
 Mixing stable Fedora packages with Rawhide packages to resolve a missing library is not recommended.
 
-## Understanding the results
+<a id="en-results"></a>
+### 🚦 Understanding the results
 
-- `[OK]`: the check passed.
-- `[WARN]`: optional component, incomplete information, or a condition worth reviewing.
-- `[FAIL]`: a problem that may prevent the driver or an essential feature from working.
-- `[INFO]`: informational data that does not lower the score.
+| Status | Meaning |
+|:---:|---|
+| ✅ `[OK]` | The check passed |
+| ⚠️ `[WARN]` | Optional component or a condition worth reviewing |
+| ❌ `[FAIL]` | A problem that may prevent an essential feature from working |
+| ℹ️ `[INFO]` | Information that does not lower the score |
 
 The final score is only a guideline. The concrete evidence in each section is more important than the numeric score.
 
-## Safety and scope
+<a id="en-safety"></a>
+### 🛡️ Safety and scope
 
 - Diagnostic mode does not remove packages or modify configuration.
 - Installation uses DNF and displays the transaction before confirmation.
@@ -305,7 +397,7 @@ The final score is only a guideline. The concrete evidence in each section is mo
 - The script never installs the CUDA Toolkit automatically.
 - Save your work and close important applications before running a repair.
 
-## Files
+### 📁 Files
 
 - `check-nvidia-fedora.sh`: recommended complete interactive version.
 - `check-nvidia.sh`: earlier basic diagnostic retained for reference.
