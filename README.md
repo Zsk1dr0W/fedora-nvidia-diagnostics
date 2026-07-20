@@ -35,6 +35,9 @@ Desarrollado por **Víctor Díaz González**.
 
 Fedora y el logotipo de Fedora son marcas del Fedora Project. NVIDIA y el logotipo de NVIDIA son marcas de NVIDIA Corporation. Este proyecto comunitario no está afiliado ni respaldado oficialmente por dichas organizaciones.
 
+> [!IMPORTANT]
+> **Aviso sobre NVIDIA:** los controladores, CUDA, bibliotecas, firmware, marcas y demás software de NVIDIA pertenecen a NVIDIA Corporation y se distribuyen bajo sus propios términos. Este repositorio no contiene ni redistribuye software de NVIDIA. Es una utilidad comunitaria e independiente que únicamente ayuda a diagnosticar, instalar mediante los repositorios configurados y comprobar el funcionamiento del driver NVIDIA en Fedora.
+
 > [!TIP]
 > Ejecuta `./check-nvidia-fedora.sh`, elige una opción y deja que el asistente haga el resto.
 
@@ -223,6 +226,9 @@ Interactive script for checking NVIDIA driver installation and operation on Fedo
 Developed by **Víctor Díaz González**.
 
 Fedora and the Fedora logo are trademarks of the Fedora Project. NVIDIA and the NVIDIA logo are trademarks of NVIDIA Corporation. This community project is not officially affiliated with or endorsed by either organization.
+
+> [!IMPORTANT]
+> **NVIDIA notice:** NVIDIA drivers, CUDA, libraries, firmware, trademarks, and other NVIDIA software belong to NVIDIA Corporation and are distributed under their own terms. This repository does not contain or redistribute NVIDIA software. It is an independent community utility that only helps diagnose, install through configured repositories, and verify NVIDIA driver operation on Fedora.
 
 > [!TIP]
 > Run `./check-nvidia-fedora.sh`, select an option, and let the assistant handle the rest.

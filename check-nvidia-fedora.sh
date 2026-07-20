@@ -3,6 +3,8 @@
 # Diagnóstico integral de NVIDIA en Fedora (especialmente portátiles híbridos Intel/AMD + NVIDIA)
 # No modifica el sistema. Algunas comprobaciones usan sudo cuando está disponible.
 # Desarrollado por Víctor Díaz González
+# Proyecto independiente: no contiene ni redistribuye software o drivers de NVIDIA.
+# NVIDIA conserva todos los derechos sobre sus productos, software y controladores.
 
 set -u
 set -o pipefail
@@ -24,6 +26,8 @@ usage() {
 Uso: check-nvidia-fedora.sh [opciones]
 
 Desarrollado por Víctor Díaz González
+
+Utilidad independiente; no contiene ni redistribuye software o drivers de NVIDIA.
 
   --menu             Abre el menú interactivo.
   --diagnose         Ejecuta únicamente el diagnóstico (sin mostrar el menú).
