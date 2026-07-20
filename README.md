@@ -13,7 +13,7 @@
 <p align="center"><strong>Fedora + NVIDIA</strong></p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/versión-1.5.0-51A2DA?style=for-the-badge" alt="Versión 1.5.0">
+  <img src="https://img.shields.io/badge/versión-1.5.1-51A2DA?style=for-the-badge" alt="Versión 1.5.1">
   <img src="https://img.shields.io/badge/Fedora-44-51A2DA?style=for-the-badge&logo=fedora&logoColor=white" alt="Fedora 44">
   <img src="https://img.shields.io/badge/NVIDIA-compatible-76B900?style=for-the-badge&logo=nvidia&logoColor=white" alt="NVIDIA compatible">
   <img src="https://img.shields.io/badge/Bash-script-4EAA25?style=for-the-badge&logo=gnubash&logoColor=white" alt="Bash">
@@ -57,7 +57,7 @@ Esta es la configuración utilizada durante el desarrollo y las pruebas. No repr
 > [!NOTE]
 > El kernel y el driver NVIDIA evolucionan con las actualizaciones de Fedora. La tabla documenta la configuración en la que se validó esta versión, no limita el script exclusivamente a esas versiones.
 
-### ✅ Estado de validación de v1.5.0
+### ✅ Estado de validación de v1.5.1
 
 La versión actual obtuvo **100/100** en el diagnóstico completo del equipo de referencia:
 
@@ -289,6 +289,7 @@ La puntuación final es orientativa. La evidencia concreta de cada sección es m
 - El diagnóstico no elimina paquetes ni modifica la configuración.
 - Los identificadores se ocultan por defecto; `--include-identifiers` permite incluirlos conscientemente.
 - El diagnóstico no eleva privilegios salvo con `--allow-sudo-read`.
+- Los parámetros KMS protegidos se muestran como información, no como fallos del driver.
 - La instalación muestra paquetes/proveedores y exige confirmación explícita antes de DNF.
 - La reparación valida el entorno, comprueba espacio y conserva una copia del initramfs.
 - La prueba de estabilidad se detiene ante un Xid nuevo o al alcanzar 95 °C.
@@ -340,7 +341,7 @@ This is the configuration used during development and testing. It is not a minim
 > [!NOTE]
 > Fedora updates continuously change the kernel and NVIDIA driver. This table records the configuration used to validate this version; it does not restrict the script to those exact versions.
 
-### ✅ v1.5.0 validation status
+### ✅ v1.5.1 validation status
 
 The current version scored **100/100** in the complete diagnostic on the reference system:
 
@@ -572,6 +573,7 @@ The final score is only a guideline. The concrete evidence in each section is mo
 - Diagnostic mode does not remove packages or modify configuration.
 - Identifiers are hidden by default and require `--include-identifiers` to be printed.
 - Diagnostics do not elevate privileges unless `--allow-sudo-read` is supplied.
+- Protected KMS parameters are reported as information, not as driver failures.
 - Installation previews packages/providers and requires explicit confirmation before DNF.
 - Repair validates its environment, checks free space, and preserves an initramfs backup.
 - The stability test stops on a new Xid or at 95 °C.

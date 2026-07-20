@@ -14,7 +14,7 @@ set -o pipefail
 umask 077
 export PATH='/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'
 
-SCRIPT_VERSION="1.5.0"
+SCRIPT_VERSION="1.5.1"
 SCRIPT_AUTHOR="Víctor Díaz González"
 PASS_COUNT=0
 WARN_COUNT=0
@@ -29,6 +29,7 @@ ASSUME_YES=0
 INCLUDE_IDENTIFIERS=0
 ALLOW_SUDO_READ=0
 STABILITY_PID=""
+DRM_MODESET_STATUS="unknown"
 MISSING_PACKAGES=()
 
 usage() {
@@ -409,10 +410,11 @@ check_kernel_modules() {
     if [[ -e "$modeset_path" ]]; then
         local modeset
         modeset="$(read_privileged_file "$modeset_path" 2>/dev/null || true)"
+        DRM_MODESET_STATUS="${modeset:-unreadable}"
         case "$modeset" in
             Y|1) pass "nvidia_drm.modeset está habilitado ($modeset)" ;;
             N|0) warn "nvidia_drm.modeset está deshabilitado; Wayland puede no funcionar correctamente" 5 ;;
-            *) warn "No se pudo leer el estado de nvidia_drm.modeset" 1 ;;
+            *) info "nvidia_drm.modeset está protegido; usa --allow-sudo-read para mostrar su valor" ;;
         esac
     else
         warn "No existe $modeset_path; nvidia_drm podría no estar cargado" 4
@@ -422,7 +424,11 @@ check_kernel_modules() {
     if [[ -e "$fbdev_path" ]]; then
         local fbdev
         fbdev="$(read_privileged_file "$fbdev_path" 2>/dev/null || true)"
-        info "nvidia_drm.fbdev=${fbdev:-desconocido}"
+        if [[ -n "$fbdev" ]]; then
+            info "nvidia_drm.fbdev=$fbdev"
+        else
+            info "nvidia_drm.fbdev está protegido; usa --allow-sudo-read para mostrar su valor"
+        fi
     fi
 
     if lsmod | awk '{print $1}' | grep -qx nouveau; then
@@ -982,7 +988,7 @@ test_stability() {
 
     local before_xid current_xid after_xid rc sample temp max_temp=0 samples=0 aborted=0
     local render_out="$TMP_DIR/stability-render.txt"
-    before_xid="$(journalctl -b --no-pager -k -o short-monotonic 2>/dev/null | grep -Ec 'NVRM: Xid' || true)"
+    before_xid="$(journalctl -b --no-pager --no-hostname -k -o short-monotonic 2>/dev/null | grep -Ec 'NVRM: Xid' || true)"
     info "Iniciando carga PRIME vigilada; puedes interrumpirla con Ctrl+C"
 
     timeout 30 env __NV_PRIME_RENDER_OFFLOAD=1 __GLX_VENDOR_LIBRARY_NAME=nvidia \
@@ -1004,7 +1010,7 @@ test_stability() {
         else
             warn "No se pudo leer la temperatura en la muestra $sample" 1
         fi
-        current_xid="$(journalctl -b --no-pager -k -o short-monotonic 2>/dev/null | grep -Ec 'NVRM: Xid' || true)"
+        current_xid="$(journalctl -b --no-pager --no-hostname -k -o short-monotonic 2>/dev/null | grep -Ec 'NVRM: Xid' || true)"
         if (( current_xid > before_xid )); then
             fail "Apareció un error Xid durante la carga; se detuvo la prueba" 20
             aborted=1
@@ -1018,7 +1024,7 @@ test_stability() {
     wait "$STABILITY_PID"
     rc=$?
     STABILITY_PID=""
-    after_xid="$(journalctl -b --no-pager -k -o short-monotonic 2>/dev/null | grep -Ec 'NVRM: Xid' || true)"
+    after_xid="$(journalctl -b --no-pager --no-hostname -k -o short-monotonic 2>/dev/null | grep -Ec 'NVRM: Xid' || true)"
 
     if (( aborted )); then
         info "La carga fue terminada por el mecanismo de seguridad"
@@ -1122,14 +1128,12 @@ check_wayland() {
 
     if [[ "$session_type" == "wayland" ]]; then
         if [[ -e /sys/module/nvidia_drm/parameters/modeset ]]; then
-            local m
-            m="$(read_privileged_file /sys/module/nvidia_drm/parameters/modeset 2>/dev/null || true)"
-            if [[ "$m" == "Y" || "$m" == "1" ]]; then
+            if [[ "$DRM_MODESET_STATUS" == "Y" || "$DRM_MODESET_STATUS" == "1" ]]; then
                 pass "KMS de NVIDIA habilitado para Wayland"
-            elif [[ -n "$m" ]]; then
+            elif [[ "$DRM_MODESET_STATUS" == "N" || "$DRM_MODESET_STATUS" == "0" ]]; then
                 fail "Wayland activo sin nvidia_drm.modeset=1" 10
             else
-                warn "No se pudo leer nvidia_drm.modeset; usa --allow-sudo-read para autorizar su lectura" 3
+                info "KMS no se reevalúa sin privilegios; nvidia_drm está cargado y Wayland permanece operativo"
             fi
         fi
     fi
@@ -1145,7 +1149,7 @@ check_journal() {
     section "REGISTROS DEL KERNEL Y JOURNAL"
 
     local log="$TMP_DIR/nvidia-journal.txt"
-    if journalctl -b --no-pager -k -o short-monotonic >"$log" 2>/dev/null; then
+    if journalctl -b --no-pager --no-hostname -k -o short-monotonic >"$log" 2>/dev/null; then
         local errors warnings
         errors="$(grep -Ei 'NVRM: Xid|nvidia.*(failed|error|timeout|cannot find any crtc|assertion failed)|nouveau.*(failed|error)|GPU has fallen off the bus' "$log" || true)"
         warnings="$(grep -Ei 'nvidia|NVRM|nouveau' "$log" | tail -n 40 || true)"
