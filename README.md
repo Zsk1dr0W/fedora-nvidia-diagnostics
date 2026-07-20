@@ -34,6 +34,26 @@ Script interactivo para comprobar la instalación y el funcionamiento del driver
 > [!NOTE]
 > El script puede detectar configuraciones **AMD + NVIDIA**, pero ese tipo de equipo aún no ha sido probado ni validado. No se garantiza que todas las comprobaciones o acciones de reparación se comporten igual que en Intel + NVIDIA.
 
+### 🧪 Hardware de referencia probado
+
+Esta es la configuración utilizada durante el desarrollo y las pruebas. No representa un requisito mínimo.
+
+| Componente | Configuración validada |
+|---|---|
+| 💻 Equipo | HP ENVY Laptop 16-h1xxx |
+| 🧠 Procesador | Intel Core i9-13900H de 13.ª generación |
+| 🎨 GPU integrada | Intel Iris Xe Graphics (Raptor Lake-P), driver `i915` |
+| 🎮 GPU dedicada | NVIDIA GeForce RTX 4060 Laptop GPU / AD107M, driver `nvidia` |
+| 🧮 Memoria | 32 GB de RAM |
+| 🐧 Sistema | Fedora Linux 44 Workstation, arquitectura `x86_64` |
+| ⚙️ Kernel probado | `7.1.3-201.fc44.x86_64` |
+| 🪟 Escritorio | GNOME sobre Wayland |
+| 💻 Pantalla interna | eDP conectado a Intel `i915` |
+| 🖥️ Salida externa | HDMI conectado directamente a NVIDIA |
+
+> [!NOTE]
+> El kernel y el driver NVIDIA evolucionan con las actualizaciones de Fedora. La tabla documenta la configuración en la que se validó esta versión, no limita el script exclusivamente a esas versiones.
+
 Desarrollado por **Víctor Díaz González**.
 
 Fedora y el logotipo de Fedora son marcas del Fedora Project. NVIDIA y el logotipo de NVIDIA son marcas de NVIDIA Corporation. Este proyecto comunitario no está afiliado ni respaldado oficialmente por dichas organizaciones.
@@ -230,6 +250,26 @@ Interactive script for checking NVIDIA driver installation and operation on Fedo
 
 > [!NOTE]
 > The script can detect **AMD + NVIDIA** configurations, but that type of system has not yet been tested or validated. Not every check or repair action is guaranteed to behave exactly as it does on Intel + NVIDIA systems.
+
+### 🧪 Tested reference hardware
+
+This is the configuration used during development and testing. It is not a minimum requirement.
+
+| Component | Validated configuration |
+|---|---|
+| 💻 Computer | HP ENVY Laptop 16-h1xxx |
+| 🧠 Processor | 13th Gen Intel Core i9-13900H |
+| 🎨 Integrated GPU | Intel Iris Xe Graphics (Raptor Lake-P), `i915` driver |
+| 🎮 Dedicated GPU | NVIDIA GeForce RTX 4060 Laptop GPU / AD107M, `nvidia` driver |
+| 🧮 Memory | 32 GB RAM |
+| 🐧 System | Fedora Linux 44 Workstation, `x86_64` architecture |
+| ⚙️ Tested kernel | `7.1.3-201.fc44.x86_64` |
+| 🪟 Desktop | GNOME on Wayland |
+| 💻 Internal display | eDP connected to Intel `i915` |
+| 🖥️ External output | HDMI directly connected to NVIDIA |
+
+> [!NOTE]
+> Fedora updates continuously change the kernel and NVIDIA driver. This table records the configuration used to validate this version; it does not restrict the script to those exact versions.
 
 Developed by **Víctor Díaz González**.
 
