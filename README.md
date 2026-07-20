@@ -1,5 +1,17 @@
 # Diagnóstico NVIDIA para Fedora
 
+<p align="center">
+  <a href="https://fedoraproject.org/" title="Fedora Project">
+    <img src="https://cdn.simpleicons.org/fedora/51A2DA" alt="Fedora" width="110" height="110">
+  </a>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+  <a href="https://www.nvidia.com/" title="NVIDIA">
+    <img src="https://cdn.simpleicons.org/nvidia/76B900" alt="NVIDIA" width="110" height="110">
+  </a>
+</p>
+
+<p align="center"><strong>Fedora + NVIDIA</strong></p>
+
 **Versión actual: 1.3.5**
 
 [Español](#español) · [English](#english)
@@ -9,6 +21,8 @@
 Script interactivo para comprobar la instalación y el funcionamiento del driver NVIDIA en Fedora, con atención especial a portátiles con gráficos híbridos Intel/AMD + NVIDIA y salidas HDMI/DisplayPort.
 
 Desarrollado por **Víctor Díaz González**.
+
+Fedora y el logotipo de Fedora son marcas del Fedora Project. NVIDIA y el logotipo de NVIDIA son marcas de NVIDIA Corporation. Este proyecto comunitario no está afiliado ni respaldado oficialmente por dichas organizaciones.
 
 ## Funciones principales
 
@@ -156,6 +170,8 @@ La puntuación final es orientativa. La evidencia concreta de cada sección es m
 Interactive script for checking NVIDIA driver installation and operation on Fedora, with special attention to Intel/AMD + NVIDIA hybrid laptops and HDMI/DisplayPort outputs.
 
 Developed by **Víctor Díaz González**.
+
+Fedora and the Fedora logo are trademarks of the Fedora Project. NVIDIA and the NVIDIA logo are trademarks of NVIDIA Corporation. This community project is not officially affiliated with or endorsed by either organization.
 
 ## Main features
 
