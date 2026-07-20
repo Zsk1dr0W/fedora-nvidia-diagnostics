@@ -10,7 +10,7 @@
 set -u
 set -o pipefail
 
-SCRIPT_VERSION="1.3.5"
+SCRIPT_VERSION="1.4.0"
 SCRIPT_AUTHOR="Víctor Díaz González"
 PASS_COUNT=0
 WARN_COUNT=0
@@ -20,6 +20,7 @@ SCORE=100
 INSTALL_MISSING=0
 REPAIR_DRIVER=0
 SHOW_MENU=0
+ACTION="full"
 MISSING_PACKAGES=()
 
 usage() {
@@ -31,7 +32,11 @@ Desarrollado por Víctor Díaz González
 Utilidad independiente; no contiene ni redistribuye software o drivers de NVIDIA.
 
   --menu             Abre el menú interactivo.
-  --diagnose         Ejecuta únicamente el diagnóstico (sin mostrar el menú).
+  --diagnose         Ejecuta el diagnóstico completo (sin mostrar el menú).
+  --quick            Ejecuta un diagnóstico rápido de los componentes esenciales.
+  --hdmi-test        Prueba las salidas HDMI/DP, EDID y audio asociado.
+  --multimedia-test  Prueba APIs gráficas y codificación NVENC real.
+  --stability-test   Ejecuta una carga gráfica vigilada durante 30 segundos.
   --install-missing  Instala con DNF los paquetes de soporte/diagnóstico ausentes.
   --repair-driver    Reconstruye el módulo NVIDIA y el initramfs del kernel activo.
   -h, --help         Muestra esta ayuda.
@@ -48,7 +53,11 @@ parse_args() {
     while (( $# > 0 )); do
         case "$1" in
             --menu) SHOW_MENU=1 ;;
-            --diagnose) ;;
+            --diagnose) ACTION="full" ;;
+            --quick) ACTION="quick" ;;
+            --hdmi-test) ACTION="hdmi" ;;
+            --multimedia-test) ACTION="multimedia" ;;
+            --stability-test) ACTION="stability" ;;
             --install-missing) INSTALL_MISSING=1 ;;
             --repair-driver) REPAIR_DRIVER=1 ;;
             -h|--help) usage; exit 0 ;;
@@ -64,25 +73,33 @@ interactive_menu() {
 
     while true; do
         printf '\n%sAsistente NVIDIA para Fedora%s\n' "$C_BOLD" "$C_RESET"
-        printf '  1) Ejecutar diagnóstico completo (solo lectura)\n'
-        printf '  2) Instalar paquetes faltantes\n'
-        printf '  3) Reparar módulo NVIDIA e initramfs\n'
-        printf '  4) Instalar faltantes y reparar NVIDIA\n'
-        printf '  5) Mostrar ayuda y comandos disponibles\n'
+        printf '  1) Diagnóstico rápido\n'
+        printf '  2) Diagnóstico completo\n'
+        printf '  3) Prueba de HDMI/DisplayPort y audio\n'
+        printf '  4) Prueba gráfica y multimedia NVIDIA\n'
+        printf '  5) Prueba de estabilidad (30 segundos)\n'
+        printf '  6) Instalar paquetes faltantes\n'
+        printf '  7) Reparar módulo NVIDIA e initramfs\n'
+        printf '  8) Instalar faltantes y reparar NVIDIA\n'
+        printf '  9) Mostrar ayuda y comandos disponibles\n'
         printf '  0) Salir\n\n'
-        read -r -p 'Selecciona una opción [0-5]: ' choice || return
+        read -r -p 'Selecciona una opción [0-9]: ' choice || return
 
         case "$choice" in
-            1) "$self" --diagnose ;;
-            2) "$self" --install-missing ;;
-            3) "$self" --repair-driver ;;
-            4) "$self" --install-missing --repair-driver ;;
-            5) "$self" --help ;;
+            1) "$self" --quick ;;
+            2) "$self" --diagnose ;;
+            3) "$self" --hdmi-test ;;
+            4) "$self" --multimedia-test ;;
+            5) "$self" --stability-test ;;
+            6) "$self" --install-missing ;;
+            7) "$self" --repair-driver ;;
+            8) "$self" --install-missing --repair-driver ;;
+            9) "$self" --help ;;
             0) printf 'Saliendo.\n'; return ;;
-            *) printf '%b Opción inválida. Elige un número entre 0 y 5.\n' "$WARN" ;;
+            *) printf '%b Opción inválida. Elige un número entre 0 y 9.\n' "$WARN" ;;
         esac
 
-        if [[ "$choice" =~ ^[1-5]$ ]]; then
+        if [[ "$choice" =~ ^[1-9]$ ]]; then
             printf '\n'
             read -r -p 'Pulsa Enter para volver al menú...' _ || return
         fi
@@ -231,6 +248,7 @@ print_header() {
     printf 'Fecha: %s\n' "$(date --iso-8601=seconds 2>/dev/null || date)"
     printf 'Usuario: %s (UID %s)\n' "$(id -un)" "$(id -u)"
     printf 'Host: %s\n' "$host_name"
+    printf 'Perfil de prueba: %s\n' "$ACTION"
     if (( REPAIR_DRIVER )); then
         printf 'Modo: diagnóstico y reparación del módulo NVIDIA/initramfs.\n'
     elif (( INSTALL_MISSING )); then
@@ -389,6 +407,40 @@ check_nvidia_smi() {
 
     info "Procesos que usan la GPU:"
     nvidia-smi pmon -c 1 2>/dev/null | sed 's/^/  /' || info "nvidia-smi pmon no devolvió información"
+}
+
+check_version_consistency() {
+    section "COHERENCIA DE VERSIONES NVIDIA"
+
+    local module_version="" smi_version="" rpm_version="" kmod_version=""
+    module_version="$(modinfo -F version nvidia 2>/dev/null || true)"
+    if have nvidia-smi; then
+        smi_version="$(nvidia-smi --query-gpu=driver_version --format=csv,noheader 2>/dev/null | head -n1 || true)"
+    fi
+    rpm_version="$(rpm -q --qf '%{VERSION}' xorg-x11-drv-nvidia 2>/dev/null || true)"
+    kmod_version="$(rpm -q --qf '%{VERSION}' "kmod-nvidia-$(uname -r)" 2>/dev/null || true)"
+
+    info "Módulo cargado: ${module_version:-no disponible}"
+    info "nvidia-smi: ${smi_version:-no disponible}"
+    info "Paquete de usuario: ${rpm_version:-no disponible}"
+    info "KMOD del kernel activo: ${kmod_version:-no disponible}"
+
+    local expected="" value mismatch=0
+    for value in "$module_version" "$smi_version" "$rpm_version" "$kmod_version"; do
+        [[ -z "$value" ]] && continue
+        if [[ -z "$expected" ]]; then
+            expected="$value"
+        elif [[ "$value" != "$expected" ]]; then
+            mismatch=1
+        fi
+    done
+    if [[ -z "$expected" ]]; then
+        fail "No fue posible obtener ninguna versión NVIDIA" 10
+    elif (( mismatch )); then
+        fail "Las versiones del módulo, herramientas o paquetes NVIDIA no coinciden" 15
+    else
+        pass "Las versiones NVIDIA disponibles coinciden ($expected)"
+    fi
 }
 
 check_packages_and_build() {
@@ -696,6 +748,52 @@ check_hdmi_outputs() {
     fi
 }
 
+check_hdmi_details() {
+    section "EDID, ENLACE Y AUDIO ELD"
+
+    local connector status name value edid_file eld found_edid=0 found_eld=0
+    shopt -s nullglob
+    for connector in /sys/class/drm/card*-HDMI-A-* /sys/class/drm/card*-DP-*; do
+        [[ -r "$connector/status" ]] || continue
+        status="$(<"$connector/status")"
+        [[ "$status" == "connected" ]] || continue
+        name="$(basename "$connector")"
+        info "$name:"
+        for value in enabled dpms link_status; do
+            if [[ -r "$connector/$value" ]]; then
+                printf '  %s=%s\n' "$value" "$(<"$connector/$value")"
+            fi
+        done
+        edid_file="$connector/edid"
+        if [[ -s "$edid_file" ]]; then
+            found_edid=$((found_edid + 1))
+            pass "$name expone un EDID válido ($(stat -c %s "$edid_file" 2>/dev/null || echo '?') bytes)"
+            info "Huella EDID: $(sha256sum "$edid_file" 2>/dev/null | awk '{print $1}')"
+            if have edid-decode; then
+                edid-decode "$edid_file" 2>/dev/null | grep -E 'Manufacturer:|Model:|Display Product Name|DTD 1:|Maximum image size' | head -n 12 | sed 's/^/  /' || true
+            else
+                info "Instala edid-decode para mostrar fabricante, modelo y resolución preferida"
+                add_missing_package edid-decode
+            fi
+        else
+            warn "$name está conectado, pero no entrega EDID" 4
+        fi
+    done
+
+    for eld in /proc/asound/card*/eld*; do
+        [[ -r "$eld" ]] || continue
+        if grep -Eq 'monitor_present[[:space:]]+1|eld_valid[[:space:]]+1' "$eld"; then
+            found_eld=$((found_eld + 1))
+            pass "ALSA expone audio ELD para el monitor"
+            grep -E 'monitor_name|connection_type|sad_count|eld_valid|monitor_present' "$eld" | sed 's/^/  /'
+        fi
+    done
+    shopt -u nullglob
+
+    (( found_edid > 0 )) || warn "No se obtuvo EDID de ninguna salida conectada" 3
+    (( found_eld > 0 )) || warn "No se encontró audio ELD válido; comprueba que el monitor anuncie audio" 2
+}
+
 check_cuda() {
     section "CUDA"
 
@@ -760,6 +858,83 @@ check_video_acceleration() {
         fi
     else
         info "vdpauinfo no instalado"
+    fi
+}
+
+test_nvenc_functional() {
+    section "PRUEBA FUNCIONAL NVENC"
+
+    if ! have ffmpeg; then
+        warn "FFmpeg no está instalado; no se puede ejecutar una codificación NVENC real" 2
+        return
+    fi
+    if ! ffmpeg -hide_banner -encoders 2>/dev/null | grep 'h264_nvenc' >/dev/null; then
+        warn "Este FFmpeg no ofrece el codificador h264_nvenc" 3
+        return
+    fi
+
+    local out="$TMP_DIR/nvenc-functional.txt"
+    if timeout 20 ffmpeg -hide_banner -loglevel warning \
+        -f lavfi -i 'testsrc2=size=1280x720:rate=30:duration=2' \
+        -c:v h264_nvenc -preset p1 -f null - >"$out" 2>&1; then
+        pass "NVENC codificó correctamente 2 segundos de vídeo sintético 720p"
+    else
+        warn "La prueba funcional de NVENC falló" 5
+        tail -n 15 "$out" | sed 's/^/  /'
+    fi
+}
+
+test_stability() {
+    section "PRUEBA OPCIONAL DE ESTABILIDAD (30 SEGUNDOS)"
+
+    if ! have nvidia-smi || ! nvidia-smi >/dev/null 2>&1; then
+        fail "nvidia-smi debe funcionar antes de iniciar la prueba de estabilidad" 10
+        return
+    fi
+    if ! have glxgears || [[ -z "${DISPLAY:-}" ]]; then
+        warn "Se necesita glxgears y una sesión gráfica para generar carga" 4
+        return
+    fi
+
+    local before_xid after_xid render_pid rc sample temp max_temp=0 samples=0
+    local render_out="$TMP_DIR/stability-render.txt"
+    before_xid="$(journalctl -b --no-pager -k 2>/dev/null | grep -Ec 'NVRM: Xid' || true)"
+    info "Iniciando carga PRIME vigilada; puedes interrumpirla con Ctrl+C"
+
+    timeout 30 env __NV_PRIME_RENDER_OFFLOAD=1 __GLX_VENDOR_LIBRARY_NAME=nvidia \
+        glxgears -info >"$render_out" 2>&1 &
+    render_pid=$!
+    for sample in {1..10}; do
+        temp="$(nvidia-smi --query-gpu=temperature.gpu --format=csv,noheader,nounits 2>/dev/null | head -n1 || true)"
+        if [[ "$temp" =~ ^[0-9]+$ ]]; then
+            samples=$((samples + 1))
+            (( temp > max_temp )) && max_temp=$temp
+            info "Muestra $sample/10: ${temp} °C"
+        else
+            warn "No se pudo leer la temperatura en la muestra $sample" 1
+        fi
+        sleep 3
+    done
+    wait "$render_pid"
+    rc=$?
+    after_xid="$(journalctl -b --no-pager -k 2>/dev/null | grep -Ec 'NVRM: Xid' || true)"
+
+    if [[ $rc -eq 0 || $rc -eq 124 ]]; then
+        pass "La carga gráfica permaneció activa durante la prueba"
+    else
+        fail "La carga gráfica terminó inesperadamente (código $rc)" 10
+        tail -n 15 "$render_out" | sed 's/^/  /'
+    fi
+    (( samples > 0 )) && info "Temperatura máxima observada: ${max_temp} °C"
+    if (( after_xid > before_xid )); then
+        fail "Aparecieron $((after_xid - before_xid)) errores Xid nuevos durante la prueba" 20
+    else
+        pass "No aparecieron errores Xid nuevos durante la prueba"
+    fi
+    if (( max_temp >= 90 )); then
+        warn "La temperatura alcanzó ${max_temp} °C; revisa ventilación y perfil térmico" 5
+    elif (( max_temp > 0 )); then
+        pass "La temperatura se mantuvo por debajo de 90 °C"
     fi
 }
 
@@ -978,7 +1153,7 @@ check_benchmark() {
 check_recommended_packages() {
     section "PAQUETES DE DIAGNÓSTICO RECOMENDADOS"
 
-    local packages=(pciutils glx-utils vulkan-tools egl-utils egl-gbm clinfo libva-utils vdpauinfo mokutil switcheroo-control)
+    local packages=(pciutils glx-utils vulkan-tools egl-utils egl-gbm clinfo libva-utils vdpauinfo edid-decode mokutil switcheroo-control)
     local p
     for p in "${packages[@]}"; do
         if rpm_installed "$p"; then
@@ -1072,22 +1247,15 @@ print_recommendations() {
     section "RECOMENDACIONES"
 
     local recs=()
-    have g++ || recs+=("Para disponer de g++, instala: sudo dnf install gcc-c++")
     have glxinfo || recs+=("Para probar OpenGL/PRIME, instala: sudo dnf install glx-utils")
     have vulkaninfo || recs+=("Para diagnosticar Vulkan, instala: sudo dnf install vulkan-tools")
     have eglinfo || recs+=("Para diagnosticar EGL, instala: sudo dnf install egl-utils")
     have clinfo || recs+=("Para diagnosticar OpenCL, instala: sudo dnf install clinfo")
-    have nvcc || recs+=("Instala CUDA Toolkit solo si vas a desarrollar/compilar CUDA; el driver no lo requiere.")
     rpm -q "kernel-devel-$(uname -r)" >/dev/null 2>&1 || recs+=("Instala el desarrollo del kernel actual: sudo dnf install kernel-devel-$(uname -r)")
 
     if (( ${#MISSING_PACKAGES[@]} > 0 )); then
         recs+=("Paquetes de soporte/diagnóstico ausentes: sudo dnf install ${MISSING_PACKAGES[*]}")
         recs+=("También puedes ejecutar este script con: sudo $0 --install-missing")
-    fi
-
-    if ! rpm_installed akmod-nvidia || ! rpm_installed xorg-x11-drv-nvidia; then
-        recs+=("Driver RPM Fusion incompleto. Habilita RPM Fusion (si aún no está habilitado) y ejecuta: sudo dnf install akmod-nvidia xorg-x11-drv-nvidia")
-        recs+=("Después ejecuta: sudo $0 --repair-driver; al terminar reinicia. No instales CUDA para reparar HDMI.")
     fi
 
     if [[ ! -e /dev/nvidiactl || ! -e /dev/nvidia0 ]]; then
@@ -1153,21 +1321,63 @@ main() {
     check_gpu_detection
     check_kernel_modules
     check_nvidia_smi
-    check_packages_and_build
-    check_secure_boot_and_signatures
-    check_graphics_apis
-    check_prime
-    check_hdmi_outputs
-    check_cuda
-    check_video_acceleration
-    check_gsp_and_pcie
-    check_services
-    check_wayland
-    check_journal
-    check_libraries
-    check_updates
-    check_benchmark
-    check_recommended_packages
+    check_version_consistency
+
+    case "$ACTION" in
+        quick)
+            check_secure_boot_and_signatures
+            check_prime
+            check_hdmi_outputs
+            check_wayland
+            check_journal
+            check_libraries
+            ;;
+        hdmi)
+            check_secure_boot_and_signatures
+            check_hdmi_outputs
+            check_hdmi_details
+            check_wayland
+            check_journal
+            ;;
+        multimedia)
+            check_graphics_apis
+            check_prime
+            check_cuda
+            check_video_acceleration
+            test_nvenc_functional
+            check_libraries
+            check_journal
+            ;;
+        stability)
+            check_prime
+            test_stability
+            check_gsp_and_pcie
+            check_journal
+            ;;
+        full)
+            check_packages_and_build
+            check_secure_boot_and_signatures
+            check_graphics_apis
+            check_prime
+            check_hdmi_outputs
+            check_hdmi_details
+            check_cuda
+            check_video_acceleration
+            test_nvenc_functional
+            check_gsp_and_pcie
+            check_services
+            check_wayland
+            check_journal
+            check_libraries
+            check_updates
+            check_benchmark
+            check_recommended_packages
+            ;;
+        *)
+            fail "Perfil de diagnóstico desconocido: $ACTION" 10
+            ;;
+    esac
+
     install_missing_packages
     repair_driver
     print_recommendations

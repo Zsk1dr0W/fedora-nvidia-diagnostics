@@ -13,7 +13,7 @@
 <p align="center"><strong>Fedora + NVIDIA</strong></p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/versión-1.3.5-51A2DA?style=for-the-badge" alt="Versión 1.3.5">
+  <img src="https://img.shields.io/badge/versión-1.4.0-51A2DA?style=for-the-badge" alt="Versión 1.4.0">
   <img src="https://img.shields.io/badge/Fedora-44-51A2DA?style=for-the-badge&logo=fedora&logoColor=white" alt="Fedora 44">
   <img src="https://img.shields.io/badge/NVIDIA-compatible-76B900?style=for-the-badge&logo=nvidia&logoColor=white" alt="NVIDIA compatible">
   <img src="https://img.shields.io/badge/Bash-script-4EAA25?style=for-the-badge&logo=gnubash&logoColor=white" alt="Bash">
@@ -74,6 +74,19 @@ Fedora y el logotipo de Fedora son marcas del Fedora Project. NVIDIA y el logoti
 | 🔊 Multimedia | Audio HDMI, PipeWire, NVENC, NVDEC, VA-API y VDPAU |
 | 🔐 Seguridad | Secure Boot, firma del módulo y conflictos con Nouveau |
 | 🛠️ Reparación | Paquetes faltantes, AKMODS y reconstrucción del initramfs |
+
+### 🧭 Perfiles de prueba
+
+| Perfil | Alcance | Duración aproximada |
+|---|---|:---:|
+| ⚡ Rápido | Driver, versiones, PRIME, HDMI, KMS y errores | Segundos |
+| 🔎 Completo | Todas las comprobaciones disponibles | Menos de 2 minutos |
+| 🖥️ HDMI/audio | Conectores, EDID, enlace DRM, PipeWire y ALSA ELD | Segundos |
+| 🎞️ Multimedia | APIs gráficas, vídeo y codificación NVENC real | Segundos |
+| 🌡️ Estabilidad | Carga PRIME, temperatura y errores Xid nuevos | 30 segundos |
+
+> [!CAUTION]
+> La prueba de estabilidad aumenta temporalmente el uso, consumo y temperatura de la GPU. Solo se ejecuta al elegirla explícitamente.
 
 ### 📋 Contenido
 
@@ -137,19 +150,29 @@ Abre el menú interactivo:
 
 | Opción | Acción | ¿Modifica el sistema? |
 |:---:|---|:---:|
-| `1` | Diagnóstico completo | No |
-| `2` | Instalar paquetes faltantes | Sí |
-| `3` | Reparar módulo NVIDIA e initramfs | Sí |
-| `4` | Instalar faltantes y reparar | Sí |
-| `5` | Mostrar ayuda | No |
+| `1` | Diagnóstico rápido | No |
+| `2` | Diagnóstico completo | No |
+| `3` | Prueba HDMI/DisplayPort y audio | No |
+| `4` | Prueba gráfica y multimedia NVIDIA | No |
+| `5` | Prueba de estabilidad de 30 segundos | No¹ |
+| `6` | Instalar paquetes faltantes | Sí |
+| `7` | Reparar módulo NVIDIA e initramfs | Sí |
+| `8` | Instalar faltantes y reparar | Sí |
+| `9` | Mostrar ayuda | No |
 | `0` | Salir | No |
+
+¹ No cambia la configuración, pero genera carga temporal en la GPU.
 
 <a id="es-opciones"></a>
 ### ⌨️ Opciones de línea de comandos
 
 ```text
 --menu             Abre el menú interactivo.
---diagnose         Ejecuta únicamente el diagnóstico.
+--diagnose         Ejecuta el diagnóstico completo.
+--quick            Ejecuta el diagnóstico rápido.
+--hdmi-test        Prueba HDMI/DP, EDID y audio.
+--multimedia-test  Prueba APIs gráficas y codificación NVENC real.
+--stability-test   Ejecuta una carga vigilada durante 30 segundos.
 --install-missing  Instala mediante DNF los paquetes detectados como ausentes.
 --repair-driver    Reconstruye NVIDIA para el kernel activo y el initramfs.
 -h, --help         Muestra la ayuda.
@@ -159,6 +182,10 @@ Ejemplos:
 
 ```bash
 ./check-nvidia-fedora.sh --diagnose
+./check-nvidia-fedora.sh --quick
+./check-nvidia-fedora.sh --hdmi-test
+./check-nvidia-fedora.sh --multimedia-test
+./check-nvidia-fedora.sh --stability-test
 ./check-nvidia-fedora.sh --menu
 ./check-nvidia-fedora.sh --install-missing
 ./check-nvidia-fedora.sh --repair-driver
@@ -292,6 +319,19 @@ Fedora and the Fedora logo are trademarks of the Fedora Project. NVIDIA and the 
 | 🔐 Security | Secure Boot, module signature, and Nouveau conflicts |
 | 🛠️ Repair | Missing packages, AKMODS, and initramfs rebuilding |
 
+### 🧭 Test profiles
+
+| Profile | Scope | Approximate duration |
+|---|---|:---:|
+| ⚡ Quick | Driver, versions, PRIME, HDMI, KMS, and errors | Seconds |
+| 🔎 Complete | Every available check | Under 2 minutes |
+| 🖥️ HDMI/audio | Connectors, EDID, DRM link, PipeWire, and ALSA ELD | Seconds |
+| 🎞️ Multimedia | Graphics APIs, video, and real NVENC encoding | Seconds |
+| 🌡️ Stability | PRIME load, temperature, and new Xid errors | 30 seconds |
+
+> [!CAUTION]
+> The stability test temporarily increases GPU utilization, power usage, and temperature. It only runs when explicitly selected.
+
 ### 📋 Contents
 
 - [Main features](#en-features)
@@ -354,19 +394,29 @@ Open the interactive menu:
 
 | Option | Action | Changes the system? |
 |:---:|---|:---:|
-| `1` | Complete diagnostic | No |
-| `2` | Install missing packages | Yes |
-| `3` | Repair NVIDIA module and initramfs | Yes |
-| `4` | Install missing packages and repair | Yes |
-| `5` | Display help | No |
+| `1` | Quick diagnostic | No |
+| `2` | Complete diagnostic | No |
+| `3` | HDMI/DisplayPort and audio test | No |
+| `4` | NVIDIA graphics and multimedia test | No |
+| `5` | 30-second stability test | No¹ |
+| `6` | Install missing packages | Yes |
+| `7` | Repair NVIDIA module and initramfs | Yes |
+| `8` | Install missing packages and repair | Yes |
+| `9` | Display help | No |
 | `0` | Exit | No |
+
+¹ It does not change configuration, but it temporarily loads the GPU.
 
 <a id="en-options"></a>
 ### ⌨️ Command-line options
 
 ```text
 --menu             Open the interactive menu.
---diagnose         Run only the diagnostic.
+--diagnose         Run the complete diagnostic.
+--quick            Run the quick diagnostic.
+--hdmi-test        Test HDMI/DP, EDID, and audio.
+--multimedia-test  Test graphics APIs and real NVENC encoding.
+--stability-test   Run a monitored load for 30 seconds.
 --install-missing  Install packages detected as missing through DNF.
 --repair-driver    Rebuild NVIDIA for the active kernel and rebuild initramfs.
 -h, --help         Display help.
@@ -376,6 +426,10 @@ Examples:
 
 ```bash
 ./check-nvidia-fedora.sh --diagnose
+./check-nvidia-fedora.sh --quick
+./check-nvidia-fedora.sh --hdmi-test
+./check-nvidia-fedora.sh --multimedia-test
+./check-nvidia-fedora.sh --stability-test
 ./check-nvidia-fedora.sh --menu
 ./check-nvidia-fedora.sh --install-missing
 ./check-nvidia-fedora.sh --repair-driver
