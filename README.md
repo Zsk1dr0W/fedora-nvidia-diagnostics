@@ -44,15 +44,29 @@ Esta es la configuración utilizada durante el desarrollo y las pruebas. No repr
 | 🧠 Procesador | Intel Core i9-13900H de 13.ª generación |
 | 🎨 GPU integrada | Intel Iris Xe Graphics (Raptor Lake-P), driver `i915` |
 | 🎮 GPU dedicada | NVIDIA GeForce RTX 4060 Laptop GPU / AD107M, driver `nvidia` |
+| 🧩 Driver NVIDIA probado | `610.43.03` desde RPM Fusion |
 | 🧮 Memoria | 32 GB de RAM |
 | 🐧 Sistema | Fedora Linux 44 Workstation, arquitectura `x86_64` |
 | ⚙️ Kernel probado | `7.1.3-201.fc44.x86_64` |
 | 🪟 Escritorio | GNOME sobre Wayland |
 | 💻 Pantalla interna | eDP conectado a Intel `i915` |
 | 🖥️ Salida externa | HDMI conectado directamente a NVIDIA |
+| 🖥️ Monitor HDMI probado | HP Z24n G3, 1920×1200 a 60 Hz |
 
 > [!NOTE]
 > El kernel y el driver NVIDIA evolucionan con las actualizaciones de Fedora. La tabla documenta la configuración en la que se validó esta versión, no limita el script exclusivamente a esas versiones.
+
+### ✅ Estado de validación de v1.4.3
+
+La versión actual obtuvo **100/100** en el diagnóstico completo del equipo de referencia:
+
+- HDMI NVIDIA conectado, con EDID válido e identificación del monitor.
+- OpenGL y Vulkan mediante PRIME Render Offload.
+- EGL, OpenCL, VA-API y VDPAU operativos.
+- NVENC validado codificando 60 fotogramas H.264 a 720p.
+- Secure Boot activo y módulo NVIDIA correctamente firmado.
+- Versiones coincidentes entre módulo, `nvidia-smi`, paquete de usuario y KMOD.
+- Sin errores NVIDIA Xid ni fallos DRM graves durante el arranque validado.
 
 Desarrollado por **Víctor Díaz González**.
 
@@ -98,6 +112,7 @@ Fedora y el logotipo de Fedora son marcas del Fedora Project. NVIDIA y el logoti
 - [Paquetes EGL/GBM](#es-paquetes)
 - [Interpretación](#es-resultados)
 - [Seguridad](#es-seguridad)
+- [Licencia](#es-licencia)
 
 <a id="es-funciones"></a>
 ### 🔍 Funciones principales
@@ -239,6 +254,13 @@ rpm -q egl-gbm
 rpm -qf /usr/lib64/libnvidia-egl-gbm.so.1
 ```
 
+En Fedora 44, `edid-decode` pertenece al paquete `v4l-utils`:
+
+```bash
+sudo dnf install v4l-utils
+rpm -qf "$(command -v edid-decode)"
+```
+
 No se recomienda mezclar paquetes de Fedora estable con Rawhide para resolver una biblioteca ausente.
 
 <a id="es-resultados"></a>
@@ -266,6 +288,12 @@ La puntuación final es orientativa. La evidencia concreta de cada sección es m
 
 - `check-nvidia-fedora.sh`: versión completa e interactiva recomendada.
 
+<a id="es-licencia"></a>
+### ⚖️ Licencia
+
+> [!WARNING]
+> La licencia del código aún está pendiente de elección. Mientras no exista un archivo `LICENSE`, no se conceden automáticamente permisos para copiar, modificar o redistribuir el proyecto. La opción recomendada para aceptar contribuciones conservando la atribución es Apache License 2.0 junto con un archivo `NOTICE`, pero debe ser aprobada expresamente por el autor antes de incorporarla.
+
 ---
 
 <a id="english"></a>
@@ -288,15 +316,29 @@ This is the configuration used during development and testing. It is not a minim
 | 🧠 Processor | 13th Gen Intel Core i9-13900H |
 | 🎨 Integrated GPU | Intel Iris Xe Graphics (Raptor Lake-P), `i915` driver |
 | 🎮 Dedicated GPU | NVIDIA GeForce RTX 4060 Laptop GPU / AD107M, `nvidia` driver |
+| 🧩 Tested NVIDIA driver | `610.43.03` from RPM Fusion |
 | 🧮 Memory | 32 GB RAM |
 | 🐧 System | Fedora Linux 44 Workstation, `x86_64` architecture |
 | ⚙️ Tested kernel | `7.1.3-201.fc44.x86_64` |
 | 🪟 Desktop | GNOME on Wayland |
 | 💻 Internal display | eDP connected to Intel `i915` |
 | 🖥️ External output | HDMI directly connected to NVIDIA |
+| 🖥️ Tested HDMI monitor | HP Z24n G3, 1920×1200 at 60 Hz |
 
 > [!NOTE]
 > Fedora updates continuously change the kernel and NVIDIA driver. This table records the configuration used to validate this version; it does not restrict the script to those exact versions.
+
+### ✅ v1.4.3 validation status
+
+The current version scored **100/100** in the complete diagnostic on the reference system:
+
+- NVIDIA HDMI connected with valid EDID and monitor identification.
+- OpenGL and Vulkan through PRIME Render Offload.
+- Working EGL, OpenCL, VA-API, and VDPAU.
+- NVENC validated by encoding 60 H.264 frames at 720p.
+- Secure Boot enabled with a correctly signed NVIDIA module.
+- Matching module, `nvidia-smi`, user-space package, and KMOD versions.
+- No NVIDIA Xid errors or serious DRM failures during the validated boot.
 
 Developed by **Víctor Díaz González**.
 
@@ -342,6 +384,7 @@ Fedora and the Fedora logo are trademarks of the Fedora Project. NVIDIA and the 
 - [EGL/GBM packages](#en-packages)
 - [Understanding results](#en-results)
 - [Safety](#en-safety)
+- [License](#en-license)
 
 <a id="en-features"></a>
 ### 🔍 Main features
@@ -483,6 +526,13 @@ rpm -q egl-gbm
 rpm -qf /usr/lib64/libnvidia-egl-gbm.so.1
 ```
 
+On Fedora 44, `edid-decode` is provided by the `v4l-utils` package:
+
+```bash
+sudo dnf install v4l-utils
+rpm -qf "$(command -v edid-decode)"
+```
+
 Mixing stable Fedora packages with Rawhide packages to resolve a missing library is not recommended.
 
 <a id="en-results"></a>
@@ -509,3 +559,9 @@ The final score is only a guideline. The concrete evidence in each section is mo
 ### 📁 Files
 
 - `check-nvidia-fedora.sh`: recommended complete interactive version.
+
+<a id="en-license"></a>
+### ⚖️ License
+
+> [!WARNING]
+> The code license has not been selected yet. Until a `LICENSE` file exists, permission to copy, modify, or redistribute the project is not granted automatically. Apache License 2.0 together with a `NOTICE` file is the recommended option for accepting contributions while preserving attribution, but it must be explicitly approved by the author before being added.
