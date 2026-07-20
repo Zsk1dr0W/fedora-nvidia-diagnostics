@@ -13,7 +13,7 @@
 <p align="center"><strong>Fedora + NVIDIA</strong></p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/versión-1.4.1-51A2DA?style=for-the-badge" alt="Versión 1.4.1">
+  <img src="https://img.shields.io/badge/versión-1.4.2-51A2DA?style=for-the-badge" alt="Versión 1.4.2">
   <img src="https://img.shields.io/badge/Fedora-44-51A2DA?style=for-the-badge&logo=fedora&logoColor=white" alt="Fedora 44">
   <img src="https://img.shields.io/badge/NVIDIA-compatible-76B900?style=for-the-badge&logo=nvidia&logoColor=white" alt="NVIDIA compatible">
   <img src="https://img.shields.io/badge/Bash-script-4EAA25?style=for-the-badge&logo=gnubash&logoColor=white" alt="Bash">

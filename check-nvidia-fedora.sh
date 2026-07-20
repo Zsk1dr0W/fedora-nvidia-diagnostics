@@ -10,7 +10,7 @@
 set -u
 set -o pipefail
 
-SCRIPT_VERSION="1.4.1"
+SCRIPT_VERSION="1.4.2"
 SCRIPT_AUTHOR="Víctor Díaz González"
 PASS_COUNT=0
 WARN_COUNT=0
@@ -880,17 +880,18 @@ test_nvenc_functional() {
     fi
 
     local out="$TMP_DIR/nvenc-functional.txt" rc
-    if timeout 20 ffmpeg -hide_banner -loglevel warning \
-        -f lavfi -i 'testsrc2=size=1280x720:rate=30:duration=2' \
-        -c:v h264_nvenc -preset p1 -f null - >"$out" 2>&1; then
-        pass "NVENC codificó correctamente 2 segundos de vídeo sintético 720p"
+    if timeout 20 ffmpeg -nostdin -hide_banner -loglevel warning \
+        -f lavfi -i 'testsrc2=size=1280x720:rate=30' \
+        -frames:v 60 -c:v h264_nvenc -gpu 0 -preset p1 \
+        -f null /dev/null >"$out" 2>&1; then
+        pass "NVENC codificó correctamente 60 fotogramas (2 segundos) de vídeo sintético 720p"
     else
         rc=$?
         warn "La prueba funcional de NVENC falló (código $rc)" 5
         if [[ -s "$out" ]]; then
             tail -n 20 "$out" | sed 's/^/  /'
         else
-            info "FFmpeg no produjo diagnóstico; repite con: ffmpeg -loglevel verbose -f lavfi -i 'testsrc2=duration=2:size=1280x720:rate=30' -c:v h264_nvenc -f null -"
+            info "FFmpeg no produjo diagnóstico; repite con: ffmpeg -nostdin -loglevel verbose -f lavfi -i 'testsrc2=size=1280x720:rate=30' -frames:v 60 -c:v h264_nvenc -gpu 0 -f null /dev/null"
         fi
     fi
 }
