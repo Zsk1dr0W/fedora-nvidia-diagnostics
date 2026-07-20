@@ -10,7 +10,7 @@
 set -u
 set -o pipefail
 
-SCRIPT_VERSION="1.4.2"
+SCRIPT_VERSION="1.4.3"
 SCRIPT_AUTHOR="Víctor Díaz González"
 PASS_COUNT=0
 WARN_COUNT=0
@@ -774,8 +774,8 @@ check_hdmi_details() {
             if have edid-decode; then
                 edid-decode "$edid_copy" 2>/dev/null | grep -E 'Manufacturer:|Model:|Display Product Name|DTD 1:|Maximum image size' | head -n 12 | sed 's/^/  /' || true
             else
-                info "Instala edid-decode para mostrar fabricante, modelo y resolución preferida"
-                add_missing_package edid-decode
+                info "Instala v4l-utils (proporciona edid-decode) para mostrar fabricante, modelo y resolución preferida"
+                add_missing_package v4l-utils
             fi
         else
             warn "$name está conectado, pero no entrega EDID" 4
@@ -1165,11 +1165,15 @@ check_benchmark() {
 check_recommended_packages() {
     section "PAQUETES DE DIAGNÓSTICO RECOMENDADOS"
 
-    local packages=(pciutils glx-utils vulkan-tools egl-utils egl-gbm clinfo libva-utils vdpauinfo edid-decode mokutil switcheroo-control)
+    local packages=(pciutils glx-utils vulkan-tools egl-utils egl-gbm clinfo libva-utils vdpauinfo v4l-utils mokutil switcheroo-control)
     local p
     for p in "${packages[@]}"; do
         if rpm_installed "$p"; then
-            pass "$p instalado"
+            if [[ "$p" == "v4l-utils" ]]; then
+                pass "$p instalado (proporciona edid-decode)"
+            else
+                pass "$p instalado"
+            fi
         else
             info "$p no instalado"
             add_missing_package "$p"
