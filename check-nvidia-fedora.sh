@@ -10,7 +10,7 @@
 set -u
 set -o pipefail
 
-SCRIPT_VERSION="1.4.0"
+SCRIPT_VERSION="1.4.1"
 SCRIPT_AUTHOR="Víctor Díaz González"
 PASS_COUNT=0
 WARN_COUNT=0
@@ -751,12 +751,13 @@ check_hdmi_outputs() {
 check_hdmi_details() {
     section "EDID, ENLACE Y AUDIO ELD"
 
-    local connector status name value edid_file eld found_edid=0 found_eld=0
+    local connector status name value edid_file edid_copy eld found_edid=0 found_eld=0 connected_count=0
     shopt -s nullglob
     for connector in /sys/class/drm/card*-HDMI-A-* /sys/class/drm/card*-DP-*; do
         [[ -r "$connector/status" ]] || continue
         status="$(<"$connector/status")"
         [[ "$status" == "connected" ]] || continue
+        connected_count=$((connected_count + 1))
         name="$(basename "$connector")"
         info "$name:"
         for value in enabled dpms link_status; do
@@ -765,12 +766,13 @@ check_hdmi_details() {
             fi
         done
         edid_file="$connector/edid"
-        if [[ -s "$edid_file" ]]; then
+        edid_copy="$TMP_DIR/${name}.edid"
+        if dd if="$edid_file" of="$edid_copy" status=none 2>/dev/null && [[ -s "$edid_copy" ]]; then
             found_edid=$((found_edid + 1))
-            pass "$name expone un EDID válido ($(stat -c %s "$edid_file" 2>/dev/null || echo '?') bytes)"
-            info "Huella EDID: $(sha256sum "$edid_file" 2>/dev/null | awk '{print $1}')"
+            pass "$name expone un EDID válido ($(wc -c <"$edid_copy") bytes)"
+            info "Huella EDID: $(sha256sum "$edid_copy" 2>/dev/null | awk '{print $1}')"
             if have edid-decode; then
-                edid-decode "$edid_file" 2>/dev/null | grep -E 'Manufacturer:|Model:|Display Product Name|DTD 1:|Maximum image size' | head -n 12 | sed 's/^/  /' || true
+                edid-decode "$edid_copy" 2>/dev/null | grep -E 'Manufacturer:|Model:|Display Product Name|DTD 1:|Maximum image size' | head -n 12 | sed 's/^/  /' || true
             else
                 info "Instala edid-decode para mostrar fabricante, modelo y resolución preferida"
                 add_missing_package edid-decode
@@ -790,8 +792,12 @@ check_hdmi_details() {
     done
     shopt -u nullglob
 
-    (( found_edid > 0 )) || warn "No se obtuvo EDID de ninguna salida conectada" 3
-    (( found_eld > 0 )) || warn "No se encontró audio ELD válido; comprueba que el monitor anuncie audio" 2
+    if (( connected_count > 0 && found_edid == 0 )); then
+        warn "No se obtuvo EDID de ninguna salida conectada" 3
+    fi
+    if (( found_eld == 0 )); then
+        info "El monitor conectado no anuncia audio mediante ELD; es normal si no incorpora altavoces/audio HDMI"
+    fi
 }
 
 check_cuda() {
@@ -873,14 +879,19 @@ test_nvenc_functional() {
         return
     fi
 
-    local out="$TMP_DIR/nvenc-functional.txt"
+    local out="$TMP_DIR/nvenc-functional.txt" rc
     if timeout 20 ffmpeg -hide_banner -loglevel warning \
         -f lavfi -i 'testsrc2=size=1280x720:rate=30:duration=2' \
         -c:v h264_nvenc -preset p1 -f null - >"$out" 2>&1; then
         pass "NVENC codificó correctamente 2 segundos de vídeo sintético 720p"
     else
-        warn "La prueba funcional de NVENC falló" 5
-        tail -n 15 "$out" | sed 's/^/  /'
+        rc=$?
+        warn "La prueba funcional de NVENC falló (código $rc)" 5
+        if [[ -s "$out" ]]; then
+            tail -n 20 "$out" | sed 's/^/  /'
+        else
+            info "FFmpeg no produjo diagnóstico; repite con: ffmpeg -loglevel verbose -f lavfi -i 'testsrc2=duration=2:size=1280x720:rate=30' -c:v h264_nvenc -f null -"
+        fi
     fi
 }
 
