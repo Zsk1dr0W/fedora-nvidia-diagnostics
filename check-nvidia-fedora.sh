@@ -2,15 +2,19 @@
 # check-nvidia-fedora.sh
 # Diagnóstico integral de NVIDIA en Fedora (probado en portátiles híbridos Intel + NVIDIA)
 # La detección de AMD + NVIDIA existe, pero esa configuración aún no ha sido validada.
-# No modifica el sistema. Algunas comprobaciones usan sudo cuando está disponible.
+# El diagnóstico no modifica el sistema ni solicita sudo de forma predeterminada.
 # Desarrollado por Víctor Díaz González
+# Copyright 2026 Víctor Díaz González
+# SPDX-License-Identifier: Apache-2.0
 # Proyecto independiente: no contiene ni redistribuye software o drivers de NVIDIA.
 # NVIDIA conserva todos los derechos sobre sus productos, software y controladores.
 
 set -u
 set -o pipefail
+umask 077
+export PATH='/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'
 
-SCRIPT_VERSION="1.4.3"
+SCRIPT_VERSION="1.5.0"
 SCRIPT_AUTHOR="Víctor Díaz González"
 PASS_COUNT=0
 WARN_COUNT=0
@@ -21,6 +25,10 @@ INSTALL_MISSING=0
 REPAIR_DRIVER=0
 SHOW_MENU=0
 ACTION="full"
+ASSUME_YES=0
+INCLUDE_IDENTIFIERS=0
+ALLOW_SUDO_READ=0
+STABILITY_PID=""
 MISSING_PACKAGES=()
 
 usage() {
@@ -39,6 +47,10 @@ Utilidad independiente; no contiene ni redistribuye software o drivers de NVIDIA
   --stability-test   Ejecuta una carga gráfica vigilada durante 30 segundos.
   --install-missing  Instala con DNF los paquetes de soporte/diagnóstico ausentes.
   --repair-driver    Reconstruye el módulo NVIDIA y el initramfs del kernel activo.
+  --yes              Confirma acciones mutables no interactivas (úsalo con precaución).
+  --include-identifiers
+                     Incluye usuario, host, UUID de GPU y huellas EDID en el informe.
+  --allow-sudo-read  Permite solicitar sudo únicamente para leer parámetros protegidos.
   -h, --help         Muestra esta ayuda.
 
 Sin opciones abre el menú en una terminal; en uso no interactivo ejecuta el diagnóstico.
@@ -60,6 +72,9 @@ parse_args() {
             --stability-test) ACTION="stability" ;;
             --install-missing) INSTALL_MISSING=1 ;;
             --repair-driver) REPAIR_DRIVER=1 ;;
+            --yes) ASSUME_YES=1 ;;
+            --include-identifiers) INCLUDE_IDENTIFIERS=1 ;;
+            --allow-sudo-read) ALLOW_SUDO_READ=1 ;;
             -h|--help) usage; exit 0 ;;
             *) printf 'Opción desconocida: %s\n' "$1" >&2; usage >&2; exit 2 ;;
         esac
@@ -124,7 +139,20 @@ FAIL="${C_RED}[FAIL]${C_RESET}"
 INFO="${C_BLUE}[INFO]${C_RESET}"
 
 TMP_DIR="$(mktemp -d -t nvidia-check.XXXXXX)"
-trap 'rm -rf "$TMP_DIR"' EXIT
+
+cleanup() {
+    local rc=$?
+    if [[ -n "$STABILITY_PID" ]] && kill -0 "$STABILITY_PID" 2>/dev/null; then
+        kill "$STABILITY_PID" 2>/dev/null || true
+        wait "$STABILITY_PID" 2>/dev/null || true
+    fi
+    if [[ -n "${TMP_DIR:-}" && "$TMP_DIR" == /tmp/nvidia-check.* && -d "$TMP_DIR" ]]; then
+        rm -rf -- "$TMP_DIR"
+    fi
+    return "$rc"
+}
+trap cleanup EXIT
+trap 'exit 130' INT TERM
 
 section() {
     printf '\n%s===== %s =====%s\n' "$C_BOLD" "$1" "$C_RESET"
@@ -199,9 +227,44 @@ read_privileged_file() {
     local path="$1"
     if [[ -r "$path" ]]; then
         cat "$path"
-    else
+    elif (( ALLOW_SUDO_READ )); then
         run_privileged cat "$path"
+    else
+        return 126
     fi
+}
+
+redact_stream() {
+    if (( INCLUDE_IDENTIFIERS )); then
+        cat
+    else
+        sed -E \
+            -e 's/UUID=[^[:space:]]+/UUID=<oculto>/g' \
+            -e 's/GPU-[[:xdigit:]-]+/GPU-<oculto>/g' \
+            -e 's#/home/[^/[:space:]]+#/home/<usuario>#g'
+    fi
+}
+
+confirm_mutation() {
+    local description="$1" token="$2" answer
+    (( ASSUME_YES )) && return 0
+    if [[ ! -t 0 ]]; then
+        printf '%b Acción cancelada: usa --yes para autorizarla sin interacción.\n' "$FAIL" >&2
+        return 1
+    fi
+    printf '\n%b %s\n' "$WARN" "$description"
+    read -r -p "Escribe ${token} para continuar: " answer
+    [[ "$answer" == "$token" ]]
+}
+
+validate_mutation_environment() {
+    local fedora_id=""
+    if [[ -r /etc/os-release ]]; then
+        fedora_id="$(. /etc/os-release; printf '%s' "${ID:-}")"
+    fi
+    [[ "$fedora_id" == fedora ]] || { fail "Las acciones automáticas solo están habilitadas en Fedora" 10; return 1; }
+    have dnf || { fail "DNF no está disponible" 10; return 1; }
+    (( ${#NVIDIA_PCI_IDS[@]} > 0 )) || { fail "No se detectó hardware NVIDIA; se cancela la acción" 15; return 1; }
 }
 
 print_command_output() {
@@ -246,8 +309,12 @@ print_header() {
     printf 'Versión del script: %s\n' "$SCRIPT_VERSION"
     printf 'Desarrollado por: %s\n' "$SCRIPT_AUTHOR"
     printf 'Fecha: %s\n' "$(date --iso-8601=seconds 2>/dev/null || date)"
-    printf 'Usuario: %s (UID %s)\n' "$(id -un)" "$(id -u)"
-    printf 'Host: %s\n' "$host_name"
+    if (( INCLUDE_IDENTIFIERS )); then
+        printf 'Usuario: %s (UID %s)\n' "$(id -un)" "$(id -u)"
+        printf 'Host: %s\n' "$host_name"
+    else
+        printf 'Usuario/host: ocultos (usa --include-identifiers para mostrarlos)\n'
+    fi
     printf 'Perfil de prueba: %s\n' "$ACTION"
     if (( REPAIR_DRIVER )); then
         printf 'Modo: diagnóstico y reparación del módulo NVIDIA/initramfs.\n'
@@ -401,7 +468,8 @@ check_nvidia_smi() {
     [[ -n "$driver" ]] && info "Driver NVIDIA: $driver"
     [[ -n "$cuda" ]] && info "Compatibilidad CUDA anunciada por el driver: $cuda"
 
-    local query='index,name,uuid,pci.bus_id,temperature.gpu,power.draw,power.limit,utilization.gpu,utilization.memory,memory.used,memory.total,clocks.current.graphics,clocks.current.memory,pcie.link.gen.current,pcie.link.gen.max,pcie.link.width.current,pcie.link.width.max'
+    local query='index,name,pci.bus_id,temperature.gpu,power.draw,power.limit,utilization.gpu,utilization.memory,memory.used,memory.total,clocks.current.graphics,clocks.current.memory,pcie.link.gen.current,pcie.link.gen.max,pcie.link.width.current,pcie.link.width.max'
+    (( INCLUDE_IDENTIFIERS )) && query="index,name,uuid,${query#index,name,}"
     info "Telemetría GPU:"
     nvidia-smi --query-gpu="$query" --format=csv 2>/dev/null | sed 's/^/  /' || warn "No fue posible obtener toda la telemetría de nvidia-smi" 1
 
@@ -770,7 +838,11 @@ check_hdmi_details() {
         if dd if="$edid_file" of="$edid_copy" status=none 2>/dev/null && [[ -s "$edid_copy" ]]; then
             found_edid=$((found_edid + 1))
             pass "$name expone un EDID válido ($(wc -c <"$edid_copy") bytes)"
-            info "Huella EDID: $(sha256sum "$edid_copy" 2>/dev/null | awk '{print $1}')"
+            if (( INCLUDE_IDENTIFIERS )); then
+                info "Huella EDID: $(sha256sum "$edid_copy" 2>/dev/null | awk '{print $1}')"
+            else
+                info "Huella EDID omitida por privacidad"
+            fi
             if have edid-decode; then
                 edid-decode "$edid_copy" 2>/dev/null | grep -E 'Manufacturer:|Model:|Display Product Name|DTD 1:|Maximum image size' | head -n 12 | sed 's/^/  /' || true
             else
@@ -908,30 +980,49 @@ test_stability() {
         return
     fi
 
-    local before_xid after_xid render_pid rc sample temp max_temp=0 samples=0
+    local before_xid current_xid after_xid rc sample temp max_temp=0 samples=0 aborted=0
     local render_out="$TMP_DIR/stability-render.txt"
-    before_xid="$(journalctl -b --no-pager -k 2>/dev/null | grep -Ec 'NVRM: Xid' || true)"
+    before_xid="$(journalctl -b --no-pager -k -o short-monotonic 2>/dev/null | grep -Ec 'NVRM: Xid' || true)"
     info "Iniciando carga PRIME vigilada; puedes interrumpirla con Ctrl+C"
 
     timeout 30 env __NV_PRIME_RENDER_OFFLOAD=1 __GLX_VENDOR_LIBRARY_NAME=nvidia \
         glxgears -info >"$render_out" 2>&1 &
-    render_pid=$!
+    STABILITY_PID=$!
     for sample in {1..10}; do
+        if ! kill -0 "$STABILITY_PID" 2>/dev/null; then
+            break
+        fi
         temp="$(nvidia-smi --query-gpu=temperature.gpu --format=csv,noheader,nounits 2>/dev/null | head -n1 || true)"
         if [[ "$temp" =~ ^[0-9]+$ ]]; then
             samples=$((samples + 1))
             (( temp > max_temp )) && max_temp=$temp
             info "Muestra $sample/10: ${temp} °C"
+            if (( temp >= 95 )); then
+                fail "La temperatura alcanzó ${temp} °C; se detuvo la carga inmediatamente" 15
+                aborted=1
+            fi
         else
             warn "No se pudo leer la temperatura en la muestra $sample" 1
         fi
+        current_xid="$(journalctl -b --no-pager -k -o short-monotonic 2>/dev/null | grep -Ec 'NVRM: Xid' || true)"
+        if (( current_xid > before_xid )); then
+            fail "Apareció un error Xid durante la carga; se detuvo la prueba" 20
+            aborted=1
+        fi
+        if (( aborted )); then
+            kill "$STABILITY_PID" 2>/dev/null || true
+            break
+        fi
         sleep 3
     done
-    wait "$render_pid"
+    wait "$STABILITY_PID"
     rc=$?
-    after_xid="$(journalctl -b --no-pager -k 2>/dev/null | grep -Ec 'NVRM: Xid' || true)"
+    STABILITY_PID=""
+    after_xid="$(journalctl -b --no-pager -k -o short-monotonic 2>/dev/null | grep -Ec 'NVRM: Xid' || true)"
 
-    if [[ $rc -eq 0 || $rc -eq 124 ]]; then
+    if (( aborted )); then
+        info "La carga fue terminada por el mecanismo de seguridad"
+    elif [[ $rc -eq 0 || $rc -eq 124 ]]; then
         pass "La carga gráfica permaneció activa durante la prueba"
     else
         fail "La carga gráfica terminó inesperadamente (código $rc)" 10
@@ -939,14 +1030,20 @@ test_stability() {
     fi
     (( samples > 0 )) && info "Temperatura máxima observada: ${max_temp} °C"
     if (( after_xid > before_xid )); then
-        fail "Aparecieron $((after_xid - before_xid)) errores Xid nuevos durante la prueba" 20
+        if (( aborted )); then
+            info "La detención de seguridad respondió a $((after_xid - before_xid)) error(es) Xid nuevo(s)"
+        else
+            fail "Aparecieron $((after_xid - before_xid)) errores Xid nuevos durante la prueba" 20
+        fi
     else
         pass "No aparecieron errores Xid nuevos durante la prueba"
     fi
-    if (( max_temp >= 90 )); then
+    if (( max_temp >= 90 && max_temp < 95 )); then
         warn "La temperatura alcanzó ${max_temp} °C; revisa ventilación y perfil térmico" 5
-    elif (( max_temp > 0 )); then
+    elif (( max_temp > 0 && max_temp < 90 )); then
         pass "La temperatura se mantuvo por debajo de 90 °C"
+    elif (( max_temp >= 95 )); then
+        info "La protección térmica actuó al alcanzar ${max_temp} °C"
     fi
 }
 
@@ -1032,7 +1129,7 @@ check_wayland() {
             elif [[ -n "$m" ]]; then
                 fail "Wayland activo sin nvidia_drm.modeset=1" 10
             else
-                warn "No se pudo leer nvidia_drm.modeset; ejecuta el script con sudo para confirmarlo" 3
+                warn "No se pudo leer nvidia_drm.modeset; usa --allow-sudo-read para autorizar su lectura" 3
             fi
         fi
     fi
@@ -1048,21 +1145,21 @@ check_journal() {
     section "REGISTROS DEL KERNEL Y JOURNAL"
 
     local log="$TMP_DIR/nvidia-journal.txt"
-    if journalctl -b --no-pager -k >"$log" 2>/dev/null; then
+    if journalctl -b --no-pager -k -o short-monotonic >"$log" 2>/dev/null; then
         local errors warnings
         errors="$(grep -Ei 'NVRM: Xid|nvidia.*(failed|error|timeout|cannot find any crtc|assertion failed)|nouveau.*(failed|error)|GPU has fallen off the bus' "$log" || true)"
         warnings="$(grep -Ei 'nvidia|NVRM|nouveau' "$log" | tail -n 40 || true)"
 
         if [[ -n "$errors" ]]; then
             fail "Se detectaron errores relevantes de NVIDIA en el arranque actual" 20
-            printf '%s\n' "$errors" | tail -n 30 | sed 's/^/  /'
+            printf '%s\n' "$errors" | tail -n 30 | redact_stream | sed 's/^/  /'
         else
             pass "No se detectaron Xid ni errores graves de NVIDIA en el kernel del arranque actual"
         fi
 
         info "Últimas líneas relacionadas con NVIDIA:"
         if [[ -n "$warnings" ]]; then
-            printf '%s\n' "$warnings" | sed 's/^/  /'
+            printf '%s\n' "$warnings" | redact_stream | sed 's/^/  /'
         else
             printf '  Sin entradas relacionadas.\n'
         fi
@@ -1195,12 +1292,24 @@ install_missing_packages() {
         pass "No hay paquetes de soporte o diagnóstico pendientes"
         return
     fi
+    validate_mutation_environment || return
     if ! have dnf; then
         fail "DNF no está disponible; no se puede instalar: ${MISSING_PACKAGES[*]}" 5
         return
     fi
 
+    local preview="$TMP_DIR/dnf-provider-preview.txt"
     info "DNF instalará: ${MISSING_PACKAGES[*]}"
+    info "Proveedores disponibles en los repositorios habilitados:"
+    if ! dnf -q repoquery --available --qf '%{name}-%{version} (%{repoid})' "${MISSING_PACKAGES[@]}" >"$preview" 2>/dev/null || [[ ! -s "$preview" ]]; then
+        fail "No se pudo validar ningún proveedor; instalación cancelada" 5
+        return
+    fi
+    sort -u "$preview" | sed 's/^/  /'
+    if ! confirm_mutation "DNF instalará los paquetes enumerados y sus dependencias." "INSTALAR"; then
+        warn "Instalación cancelada por el usuario" 0
+        return
+    fi
     if run_privileged dnf install "${MISSING_PACKAGES[@]}"; then
         pass "Paquetes faltantes instalados correctamente"
         refresh_missing_packages
@@ -1208,7 +1317,7 @@ install_missing_packages() {
         local rc=$?
         if [[ $rc -eq 126 ]]; then
             fail "Se necesita ejecutar con sudo o disponer de sudo autenticado" 5
-            printf '  Ejecuta: sudo %q --install-missing\n' "$0"
+            printf '  Ejecuta: sudo %q --install-missing\n' "$(basename "$0")"
         else
             fail "DNF no pudo instalar todos los paquetes (código $rc)" 5
         fi
@@ -1219,8 +1328,10 @@ repair_driver() {
     (( REPAIR_DRIVER )) || return 0
     section "REPARACIÓN DEL DRIVER NVIDIA"
 
-    local running_kernel
+    local running_kernel initramfs backup stamp available_kb image_kb required_kb
     running_kernel="$(uname -r)"
+
+    validate_mutation_environment || return
 
     if ! have akmods; then
         fail "akmods no está instalado. Ejecuta primero: sudo dnf install akmods akmod-nvidia" 10
@@ -1230,13 +1341,48 @@ repair_driver() {
         fail "dracut no está instalado; no se puede reconstruir el initramfs" 10
         return
     fi
+    if ! rpm_installed akmod-nvidia; then
+        fail "akmod-nvidia no está instalado; se cancela la reparación" 10
+        return
+    fi
+    if ! rpm -q "kernel-devel-$running_kernel" >/dev/null 2>&1; then
+        fail "Falta kernel-devel-$running_kernel; se cancela la reparación" 10
+        return
+    fi
+
+    initramfs="/boot/initramfs-${running_kernel}.img"
+    if [[ ! -f "$initramfs" ]]; then
+        fail "No existe $initramfs; no se sobrescribirá ningún initramfs" 15
+        return
+    fi
+    image_kb=$(( ($(stat -c '%s' "$initramfs" 2>/dev/null || printf 0) + 1023) / 1024 ))
+    available_kb="$(df -Pk /boot 2>/dev/null | awk 'NR==2 {print $4}')"
+    required_kb=$((image_kb + 65536))
+    if [[ ! "$available_kb" =~ ^[0-9]+$ ]] || (( available_kb < required_kb )); then
+        fail "Espacio insuficiente en /boot para conservar una copia segura del initramfs" 15
+        info "Necesario aproximadamente: ${required_kb} KiB; disponible: ${available_kb:-desconocido} KiB"
+        return
+    fi
+    if ! confirm_mutation "Se reconstruirá el módulo NVIDIA y el initramfs de $running_kernel. Se guardará una copia previa." "REPARAR"; then
+        warn "Reparación cancelada por el usuario" 0
+        return
+    fi
+
+    stamp="$(date +%Y%m%d%H%M%S)"
+    backup="${initramfs}.nvidia-check-backup-${stamp}"
+    info "Creando copia de seguridad: $backup"
+    if ! run_privileged cp --preserve=mode,timestamps -- "$initramfs" "$backup"; then
+        fail "No se pudo crear la copia del initramfs; reparación cancelada" 15
+        return
+    fi
+    pass "Copia de seguridad del initramfs creada"
 
     info "Reconstruyendo/verificando el módulo NVIDIA para $running_kernel"
     run_privileged akmods --force --kernels "$running_kernel"
     local rc=$?
     if [[ $rc -ne 0 ]]; then
         if [[ $rc -eq 126 ]]; then
-            fail "La reparación necesita privilegios. Ejecuta: sudo $0 --repair-driver" 10
+            fail "La reparación necesita privilegios. Ejecuta: sudo $(basename "$0") --repair-driver" 10
         else
             fail "akmods falló (código $rc); no se modificará el initramfs" 15
         fi
@@ -1244,18 +1390,21 @@ repair_driver() {
     fi
     pass "akmods completó la verificación/reconstrucción para $running_kernel"
 
-    info "Reconstruyendo el initramfs con dracut"
-    run_privileged dracut --force
+    info "Reconstruyendo únicamente el initramfs de $running_kernel con dracut"
+    run_privileged dracut --force --kver "$running_kernel"
     rc=$?
     if [[ $rc -eq 0 ]]; then
         pass "dracut reconstruyó el initramfs correctamente"
+        info "Copia de recuperación conservada en: $backup"
         warn "La reparación está preparada. Reinicia para aplicarla: sudo reboot" 0
     else
         if [[ $rc -eq 126 ]]; then
-            fail "dracut necesita privilegios. Ejecuta: sudo dracut --force" 10
+            fail "dracut necesita privilegios. No se completó la reparación" 10
         else
             fail "dracut falló (código $rc)" 15
         fi
+        info "El initramfs anterior permanece en: $backup"
+        info "Recuperación manual: sudo cp -- '$backup' '$initramfs'"
     fi
 }
 
@@ -1271,13 +1420,13 @@ print_recommendations() {
 
     if (( ${#MISSING_PACKAGES[@]} > 0 )); then
         recs+=("Paquetes de soporte/diagnóstico ausentes: sudo dnf install ${MISSING_PACKAGES[*]}")
-        recs+=("También puedes ejecutar este script con: sudo $0 --install-missing")
+        recs+=("También puedes ejecutar este script con: sudo $(basename "$0") --install-missing")
     fi
 
     if [[ ! -e /dev/nvidiactl || ! -e /dev/nvidia0 ]]; then
         recs+=("Faltan los dispositivos NVIDIA. Prueba: sudo nvidia-modprobe -u -c=0; luego ejecuta nvidia-smi. Si funciona, reinicia y revisa udev si vuelven a faltar.")
     elif have nvidia-smi && ! nvidia-smi >/dev/null 2>&1; then
-        recs+=("Los módulos cargan, pero nvidia-smi falla. Ejecuta: sudo $0 --repair-driver; después reinicia.")
+        recs+=("Los módulos cargan, pero nvidia-smi falla. Ejecuta: sudo $(basename "$0") --repair-driver; después reinicia.")
     fi
 
     if journalctl -b --no-pager -k 2>/dev/null | grep -Eqi 'nvidia.*cannot find any crtc'; then

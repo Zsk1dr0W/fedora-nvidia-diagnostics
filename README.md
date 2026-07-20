@@ -13,10 +13,11 @@
 <p align="center"><strong>Fedora + NVIDIA</strong></p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/versión-1.4.3-51A2DA?style=for-the-badge" alt="Versión 1.4.3">
+  <img src="https://img.shields.io/badge/versión-1.5.0-51A2DA?style=for-the-badge" alt="Versión 1.5.0">
   <img src="https://img.shields.io/badge/Fedora-44-51A2DA?style=for-the-badge&logo=fedora&logoColor=white" alt="Fedora 44">
   <img src="https://img.shields.io/badge/NVIDIA-compatible-76B900?style=for-the-badge&logo=nvidia&logoColor=white" alt="NVIDIA compatible">
   <img src="https://img.shields.io/badge/Bash-script-4EAA25?style=for-the-badge&logo=gnubash&logoColor=white" alt="Bash">
+  <img src="https://img.shields.io/badge/licencia-Apache--2.0-D22128?style=for-the-badge" alt="Licencia Apache 2.0">
 </p>
 
 <p align="center">
@@ -56,7 +57,7 @@ Esta es la configuración utilizada durante el desarrollo y las pruebas. No repr
 > [!NOTE]
 > El kernel y el driver NVIDIA evolucionan con las actualizaciones de Fedora. La tabla documenta la configuración en la que se validó esta versión, no limita el script exclusivamente a esas versiones.
 
-### ✅ Estado de validación de v1.4.3
+### ✅ Estado de validación de v1.5.0
 
 La versión actual obtuvo **100/100** en el diagnóstico completo del equipo de referencia:
 
@@ -142,7 +143,7 @@ El script verifica, entre otros elementos:
 - AMD + NVIDIA: detección disponible, pero sin validación práctica por el momento.
 - Bash, RPM, DNF, systemd y las herramientas habituales del sistema.
 - Hardware NVIDIA para las comprobaciones específicas del driver.
-- `sudo` para instalar paquetes, reconstruir módulos o leer determinados parámetros protegidos.
+- `sudo` solo para instalar, reparar o cuando se autorice expresamente `--allow-sudo-read`.
 
 El diagnóstico básico es de solo lectura. Las operaciones que modifican el sistema se ejecutan únicamente al elegirlas en el menú o mediante sus opciones explícitas.
 
@@ -190,6 +191,10 @@ Abre el menú interactivo:
 --stability-test   Ejecuta una carga vigilada durante 30 segundos.
 --install-missing  Instala mediante DNF los paquetes detectados como ausentes.
 --repair-driver    Reconstruye NVIDIA para el kernel activo y el initramfs.
+--yes              Autoriza una acción mutable sin confirmación interactiva.
+--include-identifiers
+                   Incluye usuario, host, UUID de GPU y huella EDID.
+--allow-sudo-read  Autoriza sudo para leer parámetros protegidos.
 -h, --help         Muestra la ayuda.
 ```
 
@@ -207,7 +212,7 @@ Ejemplos:
 ./check-nvidia-fedora.sh --install-missing --repair-driver
 ```
 
-El script solicita `sudo` cuando una operación lo necesita. No es necesario iniciar todo el menú como `root`.
+El diagnóstico no solicita `sudo` por defecto. Instalar o reparar requiere escribir `INSTALAR` o `REPARAR`; `--yes` está destinado exclusivamente a automatización consciente.
 
 <a id="es-reparacion"></a>
 ### 🔧 Reparación del driver e HDMI
@@ -219,10 +224,10 @@ La opción `--repair-driver` automatiza la solución que suele ser necesaria cua
 
 ```bash
 sudo akmods --force --kernels "$(uname -r)"
-sudo dracut --force
+sudo dracut --force --kver "$(uname -r)"
 ```
 
-Primero ejecuta AKMODS. Solo si termina correctamente reconstruye el initramfs con Dracut. El script no reinicia automáticamente; al finalizar indicará que se debe ejecutar:
+Primero valida Fedora, NVIDIA, `kernel-devel`, espacio libre y herramientas. Después guarda una copia fechada del initramfs, ejecuta AKMODS y solo si termina correctamente reconstruye el initramfs del kernel activo. La copia se conserva para recuperación y el script nunca reinicia automáticamente.
 
 ```bash
 sudo reboot
@@ -278,11 +283,19 @@ La puntuación final es orientativa. La evidencia concreta de cada sección es m
 <a id="es-seguridad"></a>
 ### 🛡️ Seguridad y alcance
 
+> [!CAUTION]
+> El software se entrega **sin garantías**, conforme a Apache-2.0. Ningún script puede eliminar todo riesgo derivado de fallos de energía, firmware, repositorios de terceros o diferencias entre equipos. Revisa la vista previa, conserva copias de seguridad y no ejecutes las acciones mutables si no comprendes su alcance.
+
 - El diagnóstico no elimina paquetes ni modifica la configuración.
-- La instalación usa DNF y muestra la transacción antes de confirmarla.
-- La reparación modifica módulos generados e initramfs, pero no reinicia automáticamente.
+- Los identificadores se ocultan por defecto; `--include-identifiers` permite incluirlos conscientemente.
+- El diagnóstico no eleva privilegios salvo con `--allow-sudo-read`.
+- La instalación muestra paquetes/proveedores y exige confirmación explícita antes de DNF.
+- La reparación valida el entorno, comprueba espacio y conserva una copia del initramfs.
+- La prueba de estabilidad se detiene ante un Xid nuevo o al alcanzar 95 °C.
 - El script no instala CUDA Toolkit automáticamente.
 - Antes de reparar, conviene guardar el trabajo y cerrar aplicaciones importantes.
+
+Consulta la [política de seguridad](SECURITY.md) y las [reglas de contribución](CONTRIBUTING.md).
 
 ### 📁 Archivos
 
@@ -291,8 +304,7 @@ La puntuación final es orientativa. La evidencia concreta de cada sección es m
 <a id="es-licencia"></a>
 ### ⚖️ Licencia
 
-> [!WARNING]
-> La licencia del código aún está pendiente de elección. Mientras no exista un archivo `LICENSE`, no se conceden automáticamente permisos para copiar, modificar o redistribuir el proyecto. La opción recomendada para aceptar contribuciones conservando la atribución es Apache License 2.0 junto con un archivo `NOTICE`, pero debe ser aprobada expresamente por el autor antes de incorporarla.
+Código publicado bajo [Apache License 2.0](LICENSE). Deben conservarse los avisos de copyright, licencia y el archivo [NOTICE](NOTICE). NVIDIA conserva todos los derechos sobre sus productos; este repositorio no contiene ni redistribuye sus controladores o software.
 
 ---
 
@@ -328,7 +340,7 @@ This is the configuration used during development and testing. It is not a minim
 > [!NOTE]
 > Fedora updates continuously change the kernel and NVIDIA driver. This table records the configuration used to validate this version; it does not restrict the script to those exact versions.
 
-### ✅ v1.4.3 validation status
+### ✅ v1.5.0 validation status
 
 The current version scored **100/100** in the complete diagnostic on the reference system:
 
@@ -414,7 +426,7 @@ The script checks, among other components:
 - AMD + NVIDIA: detection is available, but practical validation has not yet been performed.
 - Bash, RPM, DNF, systemd, and standard system utilities.
 - NVIDIA hardware for driver-specific checks.
-- `sudo` for package installation, module rebuilding, and protected parameters.
+- `sudo` only for installation, repair, or explicitly authorized `--allow-sudo-read` checks.
 
 The basic diagnostic mode is read-only. System-changing operations only run when explicitly selected from the menu or requested through a command-line option.
 
@@ -462,6 +474,10 @@ Open the interactive menu:
 --stability-test   Run a monitored load for 30 seconds.
 --install-missing  Install packages detected as missing through DNF.
 --repair-driver    Rebuild NVIDIA for the active kernel and rebuild initramfs.
+--yes              Authorize a mutating action without an interactive prompt.
+--include-identifiers
+                   Include user, host, GPU UUID, and EDID fingerprint.
+--allow-sudo-read  Authorize sudo for reading protected parameters.
 -h, --help         Display help.
 ```
 
@@ -479,7 +495,7 @@ Examples:
 ./check-nvidia-fedora.sh --install-missing --repair-driver
 ```
 
-The script requests `sudo` only when required. The complete menu does not need to be started as `root`.
+Diagnostics do not request `sudo` by default. Installation and repair require typing `INSTALAR` or `REPARAR`; `--yes` is intended only for deliberate automation.
 
 <a id="en-repair"></a>
 ### 🔧 Driver and HDMI repair
@@ -491,10 +507,10 @@ The `--repair-driver` option automates the usual recovery procedure when the mod
 
 ```bash
 sudo akmods --force --kernels "$(uname -r)"
-sudo dracut --force
+sudo dracut --force --kver "$(uname -r)"
 ```
 
-AKMODS runs first. The initramfs is rebuilt only when AKMODS completes successfully. The script does not reboot automatically; when finished, it instructs the user to run:
+The script first validates Fedora, NVIDIA hardware, `kernel-devel`, free space, and required tools. It then keeps a timestamped initramfs backup, runs AKMODS, and rebuilds only the active kernel initramfs after AKMODS succeeds. The backup remains available for recovery, and the script never reboots automatically.
 
 ```bash
 sudo reboot
@@ -550,11 +566,19 @@ The final score is only a guideline. The concrete evidence in each section is mo
 <a id="en-safety"></a>
 ### 🛡️ Safety and scope
 
+> [!CAUTION]
+> This software is provided **without warranties** under Apache-2.0. No script can remove every risk arising from power loss, firmware, third-party repositories, or hardware differences. Review the preview, keep current backups, and do not run mutating actions unless you understand their scope.
+
 - Diagnostic mode does not remove packages or modify configuration.
-- Installation uses DNF and displays the transaction before confirmation.
-- Repair mode changes generated modules and initramfs but does not reboot automatically.
+- Identifiers are hidden by default and require `--include-identifiers` to be printed.
+- Diagnostics do not elevate privileges unless `--allow-sudo-read` is supplied.
+- Installation previews packages/providers and requires explicit confirmation before DNF.
+- Repair validates its environment, checks free space, and preserves an initramfs backup.
+- The stability test stops on a new Xid or at 95 °C.
 - The script never installs the CUDA Toolkit automatically.
 - Save your work and close important applications before running a repair.
+
+See the [security policy](SECURITY.md) and [contribution guide](CONTRIBUTING.md).
 
 ### 📁 Files
 
@@ -563,5 +587,4 @@ The final score is only a guideline. The concrete evidence in each section is mo
 <a id="en-license"></a>
 ### ⚖️ License
 
-> [!WARNING]
-> The code license has not been selected yet. Until a `LICENSE` file exists, permission to copy, modify, or redistribute the project is not granted automatically. Apache License 2.0 together with a `NOTICE` file is the recommended option for accepting contributions while preserving attribution, but it must be explicitly approved by the author before being added.
+Code released under the [Apache License 2.0](LICENSE). Copyright, license notices, and [NOTICE](NOTICE) must be preserved. NVIDIA retains all rights to its products; this repository does not contain or redistribute NVIDIA drivers or software.
