@@ -214,6 +214,33 @@ Ejemplos:
 
 El diagnóstico no solicita `sudo` por defecto. Instalar o reparar requiere escribir `INSTALAR` o `REPARAR`; `--yes` está destinado exclusivamente a automatización consciente.
 
+#### 🔐 Leer parámetros protegidos de NVIDIA
+
+Fedora puede exponer `nvidia_drm.modeset` y `nvidia_drm.fbdev` con permisos restringidos. En ese caso, el diagnóstico normal los muestra como información protegida y continúa sin reducir la puntuación.
+
+Para autorizar únicamente esas lecturas mediante `sudo`, ejecuta:
+
+```bash
+./check-nvidia-fedora.sh --diagnose --allow-sudo-read
+```
+
+También puede utilizarse con el diagnóstico rápido:
+
+```bash
+./check-nvidia-fedora.sh --quick --allow-sudo-read
+```
+
+La salida esperada, cuando ambos parámetros están activos, es similar a:
+
+```text
+[OK] nvidia_drm.modeset está habilitado (Y)
+[INFO] nvidia_drm.fbdev=Y
+[OK] KMS de NVIDIA habilitado para Wayland
+```
+
+> [!NOTE]
+> `--allow-sudo-read` puede solicitar la contraseña de `sudo`, pero solo autoriza al script a leer parámetros protegidos. No instala paquetes, no reconstruye módulos, no modifica el initramfs y no equivale a `--repair-driver`.
+
 <a id="es-reparacion"></a>
 ### 🔧 Reparación del driver e HDMI
 
@@ -497,6 +524,33 @@ Examples:
 ```
 
 Diagnostics do not request `sudo` by default. Installation and repair require typing `INSTALAR` or `REPARAR`; `--yes` is intended only for deliberate automation.
+
+#### 🔐 Reading protected NVIDIA parameters
+
+Fedora may expose `nvidia_drm.modeset` and `nvidia_drm.fbdev` with restricted permissions. When this happens, regular diagnostics report them as protected information and continue without lowering the score.
+
+To authorize only those reads through `sudo`, run:
+
+```bash
+./check-nvidia-fedora.sh --diagnose --allow-sudo-read
+```
+
+It can also be combined with the quick diagnostic:
+
+```bash
+./check-nvidia-fedora.sh --quick --allow-sudo-read
+```
+
+When both parameters are active, the expected output is similar to:
+
+```text
+[OK] nvidia_drm.modeset está habilitado (Y)
+[INFO] nvidia_drm.fbdev=Y
+[OK] KMS de NVIDIA habilitado para Wayland
+```
+
+> [!NOTE]
+> `--allow-sudo-read` may request your `sudo` password, but it only authorizes the script to read protected parameters. It does not install packages, rebuild modules, modify initramfs, or act like `--repair-driver`.
 
 <a id="en-repair"></a>
 ### 🔧 Driver and HDMI repair
