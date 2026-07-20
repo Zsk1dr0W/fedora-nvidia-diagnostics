@@ -210,7 +210,6 @@ La puntuación final es orientativa. La evidencia concreta de cada sección es m
 ### 📁 Archivos
 
 - `check-nvidia-fedora.sh`: versión completa e interactiva recomendada.
-- `check-nvidia.sh`: diagnóstico básico anterior, conservado como referencia.
 
 ---
 
@@ -400,4 +399,3 @@ The final score is only a guideline. The concrete evidence in each section is mo
 ### 📁 Files
 
 - `check-nvidia-fedora.sh`: recommended complete interactive version.
-- `check-nvidia.sh`: earlier basic diagnostic retained for reference.
